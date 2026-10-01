@@ -4,8 +4,6 @@
 
 **Минималистичный и красивый SSH-менеджер для Windows и Linux**
 
-Как Termius — только бесплатно, локально и без лишнего.
-
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
@@ -16,8 +14,7 @@
 
 </div>
 
-<!-- Скриншот: положите картинку в docs/screenshot.png и раскомментируйте строку ниже -->
-<!-- <p align="center"><img src="docs/screenshot.png" width="900" alt="vysh"></p> -->
+<p align="center"><img src="docs/screenshot.png" width="900" alt="vysh"></p>
 
 ---
 
@@ -140,6 +137,6 @@ git tag v0.2.0 && git push origin v0.2.0
 - [x] Диагностика подключения
 - [ ] Цвета из системы и дотов: акцент Windows, pywal, matugen, caelestia — с обновлением на лету
 - [ ] Свой заголовок окна с вкладками (Windows / GNOME / KDE)
-- [ ] AppImage, .deb, AUR, установщик для Windows, поддержка Astra Linux
+- [ ] AppImage, .deb, AUR, установщик для Windows, поддержка отечественных дистрибутивов
 - [ ] Сниппеты, проброс портов, jump host, разделение вкладки на панели
 - [ ] ssh-agent / Pageant, хранилище с мастер-паролем
