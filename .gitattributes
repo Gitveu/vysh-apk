@@ -1,0 +1,15 @@
+# Нормализуем переводы строк: в репозитории LF, на checkout — как принято в ОС.
+* text=auto
+
+# Скрипты Windows — всегда CRLF, Linux — всегда LF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh  text eol=lf
+
+# Бинарники
+*.png binary
+*.ico binary
+*.jpg binary
+*.ttf binary
+*.otf binary

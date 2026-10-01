@@ -1,0 +1,399 @@
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../domain/models/app_settings.dart';
+import '../../domain/services/settings_controller.dart';
+import '../../infra/platform/local_files.dart';
+import '../../infra/storage/app_paths.dart';
+import '../shell/home_switcher.dart';
+import '../theme/app_theme.dart';
+
+class SettingsPage extends ConsumerWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(settingsProvider);
+    final ctrl = ref.read(settingsProvider.notifier);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
+      children: [
+        const Align(alignment: Alignment.centerLeft, child: HomeSwitcher()),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Section(
+                  icon: Icons.palette_outlined,
+                  title: 'Внешний вид',
+                  children: [
+                    _Row(
+                      title: 'Тема',
+                      child: SegmentedButton<ThemeMode>(
+                        segments: const [
+                          ButtonSegment(value: ThemeMode.system, label: Text('Системная'),
+                              icon: Icon(Icons.brightness_auto)),
+                          ButtonSegment(value: ThemeMode.light, label: Text('Светлая'),
+                              icon: Icon(Icons.light_mode_outlined)),
+                          ButtonSegment(value: ThemeMode.dark, label: Text('Тёмная'),
+                              icon: Icon(Icons.dark_mode_outlined)),
+                        ],
+                        selected: {s.themeMode},
+                        onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('Акцентный цвет', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final (name, color) in seedPresets)
+                          _SeedSwatch(
+                            name: name,
+                            color: Color(color),
+                            selected: s.seedColor == color,
+                            onTap: () => ctrl.setSeedColor(color),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      enabled: false,
+                      leading: const Icon(Icons.wallpaper_outlined),
+                      title: const Text('Цвета из системы и дотов'),
+                      subtitle: const Text(
+                          'Акцент Windows, xdg-portal, pywal / matugen / caelestia — этап 4'),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.density_medium),
+                      title: const Text('Компактный интерфейс'),
+                      value: s.compact,
+                      onChanged: ctrl.setCompact,
+                    ),
+                  ],
+                ),
+                _Section(
+                  icon: Icons.dns_outlined,
+                  title: 'Хосты',
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.network_ping),
+                      title: const Text('Проверять доступность хостов'),
+                      subtitle: const Text(
+                          'На главной — пинг порта SSH раз в 30 секунд. Выключите, чтобы не '
+                          'стучаться лишний раз на продовые серверы: индикатор скроется.'),
+                      value: s.pingHosts,
+                      onChanged: ctrl.setPingHosts,
+                    ),
+                  ],
+                ),
+                _Section(
+                  icon: Icons.terminal,
+                  title: 'Терминал',
+                  children: [
+                    _Row(
+                      title: 'Размер шрифта',
+                      child: SizedBox(
+                        width: 320,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Slider(
+                                min: 9,
+                                max: 24,
+                                divisions: 15,
+                                value: s.terminalFontSize.clamp(9, 24).toDouble(),
+                                label: s.terminalFontSize.round().toString(),
+                                onChanged: ctrl.setTerminalFontSize,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 32,
+                              child: Text('${s.terminalFontSize.round()}',
+                                  textAlign: TextAlign.end),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'root@server:~\$ htop   # пример шрифта',
+                        style: monoStyle(context,
+                            size: s.terminalFontSize, color: scheme.onSurface),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.content_copy),
+                      title: const Text('Копировать при выделении'),
+                      subtitle: const Text('Как в терминалах Linux. Вставка — Ctrl+Shift+V'),
+                      value: s.copyOnSelect,
+                      onChanged: ctrl.setCopyOnSelect,
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Правый клик и тап двумя пальцами', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    SegmentedButton<RightClickAction>(
+                      segments: const [
+                        ButtonSegment(
+                            value: RightClickAction.menu,
+                            icon: Icon(Icons.menu_open),
+                            label: Text('Меню')),
+                        ButtonSegment(
+                            value: RightClickAction.paste,
+                            icon: Icon(Icons.content_paste),
+                            label: Text('Вставка')),
+                        ButtonSegment(
+                            value: RightClickAction.smart,
+                            icon: Icon(Icons.auto_awesome),
+                            label: Text('Копировать / вставить')),
+                      ],
+                      selected: {s.rightClick},
+                      onSelectionChanged: (v) => ctrl.setRightClick(v.first),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${_rightClickHint(s.rightClick)} Shift + правый клик всегда открывает меню.',
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.keyboard),
+                      title: const Text('Ctrl+V вставляет'),
+                      subtitle: const Text(
+                          'Как в Windows. Выключено — Ctrl+V уходит в терминал (нужно, например, в vim)'),
+                      value: s.ctrlVPaste,
+                      onChanged: ctrl.setCtrlVPaste,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.mouse_outlined),
+                      title: const Text('Средняя кнопка мыши вставляет'),
+                      subtitle: const Text('Как в Linux'),
+                      value: s.middleClickPaste,
+                      onChanged: ctrl.setMiddleClickPaste,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.warning_amber_rounded),
+                      title: const Text('Спрашивать перед вставкой нескольких строк'),
+                      subtitle: const Text('Защита от случайного запуска пачки команд на сервере'),
+                      value: s.confirmMultilinePaste,
+                      onChanged: ctrl.setConfirmMultilinePaste,
+                    ),
+                  ],
+                ),
+                _Section(
+                  icon: Icons.folder_outlined,
+                  title: 'Данные',
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Папка для скачанных файлов'),
+                      subtitle: Text(
+                          s.downloadsDir.isEmpty
+                              ? '${LocalFiles.defaultDownloadsDir()} (по умолчанию)'
+                              : s.downloadsDir,
+                          style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
+                      trailing: Wrap(
+                        spacing: 4,
+                        children: [
+                          if (s.downloadsDir.isNotEmpty)
+                            IconButton(
+                              tooltip: 'По умолчанию',
+                              icon: const Icon(Icons.restart_alt),
+                              onPressed: () => ctrl.setDownloadsDir(''),
+                            ),
+                          IconButton(
+                            tooltip: 'Выбрать папку',
+                            icon: const Icon(Icons.folder_open),
+                            onPressed: () async {
+                              final dir = await getDirectoryPath();
+                              if (dir != null) ctrl.setDownloadsDir(dir);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Папка с данными'),
+                      subtitle: Text(AppPaths.configDir.path,
+                          style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
+                      trailing: IconButton(
+                        tooltip: 'Скопировать путь',
+                        icon: const Icon(Icons.copy),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: AppPaths.configDir.path));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Путь скопирован')),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                _Section(
+                  icon: Icons.info_outline,
+                  title: 'О программе',
+                  children: [
+                    Text('vysh 0.1.0', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text('Минималистичный SSH-менеджер подключений для Windows и Linux.',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.icon, required this.title, required this.children});
+
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 10),
+                  Text(title, style: theme.textTheme.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...children,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        SizedBox(width: 140, child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
+        child,
+      ],
+    );
+  }
+}
+
+class _SeedSwatch extends StatelessWidget {
+  const _SeedSwatch({
+    required this.name,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String name;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: color,
+      brightness: Theme.of(context).brightness,
+    );
+    final outline = Theme.of(context).colorScheme.onSurface;
+
+    return Tooltip(
+      message: name,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 64,
+          height: 64,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? outline : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                Expanded(child: Container(color: scheme.primary)),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(child: Container(color: scheme.secondaryContainer)),
+                      Expanded(child: Container(color: scheme.tertiaryContainer)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _rightClickHint(RightClickAction a) => switch (a) {
+      RightClickAction.menu => 'Открывает меню: копировать, вставить, файлы, журнал.',
+      RightClickAction.paste => 'Сразу вставляет из буфера, как в PuTTY.',
+      RightClickAction.smart =>
+        'Есть выделение — копирует, нет — вставляет, как в Windows Terminal.',
+    };

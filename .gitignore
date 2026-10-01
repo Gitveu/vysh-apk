@@ -1,0 +1,48 @@
+# ─── Flutter / Dart ───────────────────────────────────
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+coverage/
+*.g.dart.incremental
+
+# Платформенные временные файлы Flutter
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Закреплённая версия Flutter через fvm (сам SDK не храним)
+.fvm/flutter_sdk
+
+# ─── Локальные сборки ─────────────────────────────────
+dist/
+*.zip
+*.tar.gz
+*.AppImage
+*.deb
+
+# ─── IDE и редакторы ──────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*~
+
+# ─── Система ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Секреты на всякий случай ─────────────────────────
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.env
