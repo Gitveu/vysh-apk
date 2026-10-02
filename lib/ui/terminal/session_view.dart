@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:xterm2/src/ui/render.dart';
 import 'package:xterm2/xterm.dart';
 
 import '../../domain/models/app_settings.dart';
@@ -13,12 +15,12 @@ import '../../infra/platform/desktop_env.dart';
 import '../shell/ui_state.dart';
 import '../sftp/sftp_pane.dart';
 import '../theme/app_theme.dart';
-import '../widgets/context_menu.dart';
 import 'connection_failure_view.dart';
 import 'terminal_accessory_bar.dart';
 import 'terminal_theme.dart';
+import 'termux_menu.dart';
 
-/// Вкладка сессии: терминал + строка состояния.
+/// Вкладка сессии: терминал + контекстное меню Termux (зажатие пальцем, выбор текста/пустоты, copy/paste/cut).
 class SessionView extends ConsumerStatefulWidget {
   const SessionView({super.key, required this.tab, required this.active});
 
@@ -32,8 +34,18 @@ class SessionView extends ConsumerStatefulWidget {
 class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingObserver {
   final _controller = TerminalController();
   final _focus = FocusNode(debugLabel: 'terminal');
+  final _terminalViewKey = GlobalKey<TerminalViewState>();
   double _paneWidth = 420;
   bool _failureDismissed = false;
+  bool _showLogManually = false;
+
+  // Жесты Termux: зажатие пальцем, выделение текста или пустоты
+  Timer? _longPressTimer;
+  Offset? _touchStartLocal;
+  Offset? _touchStartGlobal;
+  bool _isSelecting = false;
+  bool _selectionIsEmptiness = false;
+  Offset? _termuxMenuPosition;
 
   @override
   void initState() {
@@ -46,7 +58,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && widget.active) {
       final session = ref.read(tabsProvider.notifier).sessionOf(widget.tab.id);
-      // Если соединение оборвалось, пока приложение было свёрнуто — переподключаем сразу при возврате
       if (session != null &&
           widget.tab.status == SessionStatus.lost &&
           session.droppedAfterReady) {
@@ -63,7 +74,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
         if (mounted) _focus.requestFocus();
       });
     }
-    // Новая попытка подключения — экран ошибки снова можно показывать.
     if (widget.tab.status == SessionStatus.connecting &&
         old.tab.status != SessionStatus.connecting) {
       _failureDismissed = false;
@@ -73,6 +83,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _longPressTimer?.cancel();
     _controller.removeListener(_onSelectionChanged);
     _controller.dispose();
     _focus.dispose();
@@ -81,6 +92,14 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
 
   Terminal? get _terminal =>
       ref.read(tabsProvider.notifier).sessionOf(widget.tab.id)?.terminal;
+
+  RenderTerminal? get _renderTerminal {
+    try {
+      return _terminalViewKey.currentState?.renderTerminal;
+    } catch (_) {
+      return null;
+    }
+  }
 
   void _onSelectionChanged() {
     if (!ref.read(settingsProvider).copyOnSelect) return;
@@ -97,6 +116,72 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     return true;
   }
 
+  int _getSelectedCharCount() {
+    final sel = _controller.selection;
+    final terminal = _terminal;
+    if (sel == null || terminal == null) return 0;
+    return terminal.buffer.getText(sel).length;
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 40, left: 20, right: 20),
+      ),
+    );
+  }
+
+  void _copy() {
+    final sel = _controller.selection;
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+
+    if (sel == null || terminal == null) {
+      _showToast(strings.nothingToCopy);
+      _dismissTermuxMenu();
+      return;
+    }
+
+    final text = terminal.buffer.getText(sel);
+    Clipboard.setData(ClipboardData(text: text));
+    _controller.clearSelection();
+    _showToast(strings.copiedToast(text.length));
+    _dismissTermuxMenu();
+  }
+
+  void _cut() {
+    final sel = _controller.selection;
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+
+    if (sel == null || terminal == null) {
+      _showToast(strings.nothingToCopy);
+      _dismissTermuxMenu();
+      return;
+    }
+
+    final text = terminal.buffer.getText(sel);
+    Clipboard.setData(ClipboardData(text: text));
+
+    // Отправляем в терминал сигнал очистки/удаления выделенного текста
+    if (text.trim().isNotEmpty) {
+      if (text.length <= 80 && !text.contains('\n')) {
+        terminal.textInput(String.fromCharCodes(List.filled(text.length, 0x7f)));
+      } else {
+        terminal.textInput('\x15'); // Ctrl+U: очистить строку ввода
+      }
+    }
+
+    _controller.clearSelection();
+    _showToast(strings.cutToast(text.length));
+    _dismissTermuxMenu();
+  }
+
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     var text = data?.text;
@@ -109,15 +194,17 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
         _focus.requestFocus();
         return;
       }
-      if (ok == false) text = lines.join(' '); // «одной строкой»
+      if (ok == false) text = lines.join(' ');
     }
     _terminal?.paste(text);
     _controller.clearSelection();
     _focus.requestFocus();
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+    _showToast(strings.pastedToast);
   }
 
-  /// true — вставить как есть, false — одной строкой, null — отмена.
   Future<bool?> _confirmPaste(List<String> lines) {
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
     return showDialog<bool>(
       context: context,
       builder: (context) {
@@ -125,14 +212,14 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
         final preview = lines.take(12).join('\n') + (lines.length > 12 ? '\n…' : '');
         return AlertDialog(
           icon: Icon(Icons.content_paste_go, color: scheme.primary),
-          title: Text('Вставить ${lines.length} строк?'),
+          title: Text(strings.multilineTitle(lines.length)),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Каждая строка выполнится как отдельная команда.'),
+                Text(strings.multilineDesc),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -146,15 +233,15 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(strings.cancel)),
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Одной строкой'),
+              child: Text(strings.pasteSingleLine),
             ),
             FilledButton(
               autofocus: true,
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Вставить'),
+              child: Text(strings.pasteConfirm),
             ),
           ],
         );
@@ -162,11 +249,77 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     );
   }
 
-  void _onSecondaryClick(Offset position) {
+  void _selectAll() {
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+    if (terminal == null) return;
+
+    final lines = terminal.buffer.lines;
+    if (lines.length > 0) {
+      final lastIdx = lines.length - 1;
+      final lastLen = lines[lastIdx].length;
+      _controller.setSelection(
+        terminal.buffer.createAnchor(0, 0),
+        terminal.buffer.createAnchor(lastLen, lastIdx),
+        mode: SelectionMode.line,
+      );
+      _selectionIsEmptiness = false;
+      _showToast(strings.selectAll);
+      setState(() {});
+    }
+  }
+
+  void _share() {
+    final sel = _controller.selection;
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+    final text = (sel != null && terminal != null) ? terminal.buffer.getText(sel) : '';
+    if (text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: text));
+      _showToast(strings.copiedToast(text.length));
+    } else {
+      _showToast(strings.nothingToCopy);
+    }
+    _dismissTermuxMenu();
+  }
+
+  void _reset() {
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+    terminal?.keyInput(TerminalKey.keyC, ctrl: true);
+    _controller.clearSelection();
+    _showToast(strings.resetToast);
+    _dismissTermuxMenu();
+  }
+
+  void _clear() {
+    final terminal = _terminal;
+    final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
+    terminal?.keyInput(TerminalKey.keyL, ctrl: true);
+    _controller.clearSelection();
+    _showToast(strings.clearToast);
+    _dismissTermuxMenu();
+  }
+
+  void _showTermuxMenu(Offset position) {
+    setState(() {
+      _termuxMenuPosition = position;
+    });
+  }
+
+  void _dismissTermuxMenu() {
+    if (_termuxMenuPosition != null) {
+      setState(() {
+        _termuxMenuPosition = null;
+      });
+      _focus.requestFocus();
+    }
+  }
+
+  void _onSecondaryClick(Offset position, [Offset? localPosition]) {
     final action = ref.read(settingsProvider).rightClick;
-    // Shift + правый клик всегда открывает меню.
     if (HardwareKeyboard.instance.isShiftPressed || action == RightClickAction.menu) {
-      _showMenu(position);
+      _showTermuxMenu(localPosition ?? position);
       return;
     }
     if (action == RightClickAction.smart && _controller.selection != null) {
@@ -175,6 +328,96 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
       return;
     }
     _paste();
+  }
+
+  // --- Обработка удержания пальца (Termux Long Press) ---
+  void _onPointerDown(PointerDownEvent e) {
+    if (ref.read(settingsProvider).middleClickPaste &&
+        (e.buttons & kMiddleMouseButton) != 0) {
+      _paste();
+      return;
+    }
+
+    // Правый клик мыши
+    if ((e.buttons & kSecondaryMouseButton) != 0) {
+      _onSecondaryClick(e.position, e.localPosition);
+      return;
+    }
+
+    _touchStartLocal = e.localPosition;
+    _touchStartGlobal = e.position;
+    _isSelecting = false;
+
+    _longPressTimer?.cancel();
+    // 380 мс — комфортный порог зажатия пальцем (long press), как в Termux
+    _longPressTimer = Timer(const Duration(milliseconds: 380), _onLongPressTriggered);
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (_longPressTimer?.isActive == true) {
+      final startGlobal = _touchStartGlobal;
+      if (startGlobal != null && (e.position - startGlobal).distance > 16.0) {
+        // Палец сдвинулся — это прокрутка терминала, отменяем long press
+        _longPressTimer?.cancel();
+        _longPressTimer = null;
+      }
+    } else if (_isSelecting) {
+      // Пользователь зажал палец и теперь тянет, выбирая область текста или пустоты
+      final startLocal = _touchStartLocal;
+      final rt = _renderTerminal;
+      if (startLocal != null && rt != null) {
+        if (_selectionIsEmptiness) {
+          rt.selectCharacters(startLocal, e.localPosition);
+        } else {
+          rt.selectWord(startLocal, e.localPosition);
+        }
+      }
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent e) {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
+
+    if (_isSelecting) {
+      _isSelecting = false;
+      // Открываем меню Termux в точке отпускания пальца
+      _showTermuxMenu(e.localPosition);
+    }
+  }
+
+  void _onPointerCancel(PointerCancelEvent e) {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
+    _isSelecting = false;
+  }
+
+  void _onLongPressTriggered() {
+    final startLocal = _touchStartLocal;
+    final terminal = _terminal;
+    final rt = _renderTerminal;
+    if (startLocal == null || terminal == null || rt == null) return;
+
+    HapticFeedback.mediumImpact();
+
+    final cellOffset = rt.getCellOffset(startLocal);
+    final wordBoundary = terminal.buffer.getWordBoundary(cellOffset);
+    final wordText = wordBoundary != null ? terminal.buffer.getText(wordBoundary, true) : '';
+
+    if (wordText.trim().isNotEmpty) {
+      // Пользователь зажал текст — выделяем слово
+      _selectionIsEmptiness = false;
+      rt.selectWord(startLocal);
+    } else {
+      // Пользователь зажал пустоту (пустую строку, пробелы, пустое пространство терминала)
+      _selectionIsEmptiness = true;
+      rt.selectCharacters(startLocal);
+    }
+
+    _isSelecting = true;
+    setState(() {
+      _termuxMenuPosition = null;
+    });
   }
 
   Map<ShortcutActivator, Intent> _shortcuts(bool ctrlV) {
@@ -190,36 +433,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     return map;
   }
 
-  final _menu = GlobalKey<ContextMenuAreaState>();
-
-  void _showMenu(Offset position) {
-    final hasSelection = _controller.selection != null;
-    _menu.currentState?.open(position, [
-      menuItem('Копировать',
-          icon: Icons.content_copy,
-          shortcut: Keys.copy,
-          onPressed: hasSelection
-              ? () {
-                  _copySelection();
-                  _controller.clearSelection();
-                }
-              : null),
-      menuItem('Вставить', icon: Icons.content_paste, shortcut: Keys.paste, onPressed: _paste),
-      menuDivider(),
-      menuItem('Файлы (SFTP)',
-          icon: Icons.folder_outlined,
-          shortcut: Keys.files,
-          onPressed: () => ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id)),
-      menuItem('Журнал и диагностика',
-          icon: Icons.receipt_long_outlined,
-          onPressed: () => setState(() => _showLogManually = true)),
-      menuItem('Переподключить',
-          icon: Icons.refresh, shortcut: Keys.reconnect, onPressed: _reconnect),
-    ]);
-  }
-
-  bool _showLogManually = false;
-
   void _reconnect() {
     setState(() => _showLogManually = false);
     ref.read(tabsProvider.notifier).reconnect(widget.tab.id);
@@ -232,6 +445,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     final scheme = Theme.of(context).colorScheme;
     final paneOpen = ref.watch(sftpPaneProvider).contains(widget.tab.id);
     final ext = ref.watch(externalColorsProvider);
+    final strings = TermuxStrings.of(context, settings.language);
 
     if (session == null) return const SizedBox.shrink();
 
@@ -241,10 +455,11 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
             !_failureDismissed);
 
     final terminalView = Listener(
-      // Средняя кнопка — вставка (если включено).
-      onPointerDown: (e) {
-        if (settings.middleClickPaste && (e.buttons & kMiddleMouseButton) != 0) _paste();
-      },
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
       child: Actions(
         actions: {
           _PasteIntent: CallbackAction<_PasteIntent>(onInvoke: (_) {
@@ -254,6 +469,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
         },
         child: TerminalView(
           session.terminal,
+          key: _terminalViewKey,
           controller: _controller,
           focusNode: _focus,
           autofocus: true,
@@ -265,7 +481,10 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
             fontFamilyFallback: monoFontFallback,
           ),
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          onSecondaryTapDown: (details, _) => _onSecondaryClick(details.globalPosition),
+          onSecondaryTapDown: (details, _) => _onSecondaryClick(
+            details.globalPosition,
+            details.localPosition,
+          ),
         ),
       ),
     );
@@ -274,28 +493,56 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
 
     final terminalArea = ColoredBox(
       color: terminalBackgroundFor(scheme, ext),
-      child: ContextMenuArea(
-        key: _menu,
-        onClose: () => _focus.requestFocus(),
-        child: Stack(
-          children: [
-            Positioned.fill(child: terminalView),
-            if (showFailure)
-              Positioned.fill(
-                child: ConnectionFailureView(
-                  session: session,
-                  onReconnect: _reconnect,
-                  onDismiss: () {
-                    setState(() {
-                      _failureDismissed = true;
-                      _showLogManually = false;
-                    });
-                    _focus.requestFocus();
-                  },
-                ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: terminalView),
+          if (showFailure)
+            Positioned.fill(
+              child: ConnectionFailureView(
+                session: session,
+                onReconnect: _reconnect,
+                onDismiss: () {
+                  setState(() {
+                    _failureDismissed = true;
+                    _showLogManually = false;
+                  });
+                  _focus.requestFocus();
+                },
               ),
-          ],
-        ),
+            ),
+          // Всплывающее меню Termux
+          if (_termuxMenuPosition != null)
+            TermuxFloatingMenu(
+              position: _termuxMenuPosition!,
+              hasSelection: _controller.selection != null,
+              isEmptySpace: _selectionIsEmptiness,
+              selectedCharCount: _getSelectedCharCount(),
+              strings: strings,
+              onCopy: _copy,
+              onPaste: () {
+                _dismissTermuxMenu();
+                _paste();
+              },
+              onCut: _cut,
+              onSelectAll: _selectAll,
+              onShare: _share,
+              onReset: _reset,
+              onClear: _clear,
+              onSftp: () {
+                _dismissTermuxMenu();
+                ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id);
+              },
+              onLog: () {
+                _dismissTermuxMenu();
+                setState(() => _showLogManually = true);
+              },
+              onReconnect: () {
+                _dismissTermuxMenu();
+                _reconnect();
+              },
+              onDismiss: _dismissTermuxMenu,
+            ),
+        ],
       ),
     );
 
@@ -353,6 +600,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
           filesOpen: paneOpen,
           onToggleFiles: () => ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id),
           onReconnect: _reconnect,
+          strings: strings,
         ),
       ],
     );
@@ -370,6 +618,7 @@ class _StatusBar extends StatelessWidget {
     required this.onReconnect,
     required this.filesOpen,
     required this.onToggleFiles,
+    required this.strings,
   });
 
   final SessionTab tab;
@@ -377,6 +626,7 @@ class _StatusBar extends StatelessWidget {
   final VoidCallback onReconnect;
   final bool filesOpen;
   final VoidCallback onToggleFiles;
+  final TermuxStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -385,10 +635,10 @@ class _StatusBar extends StatelessWidget {
     final isCompact = MediaQuery.sizeOf(context).width < 650 || DesktopEnv.isMobile;
     final style = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     final (status, color) = switch (tab.status) {
-      SessionStatus.connecting => ('Подключение…', scheme.tertiary),
-      SessionStatus.ready => ('Подключено', Colors.green.shade500),
-      SessionStatus.lost => ('Нет соединения', scheme.error),
-      SessionStatus.closed => ('Сессия завершена', scheme.outline),
+      SessionStatus.connecting => (strings.isRussian ? 'Подключение…' : 'Connecting…', scheme.tertiary),
+      SessionStatus.ready => (strings.isRussian ? 'Подключено' : 'Connected', Colors.green.shade500),
+      SessionStatus.lost => (strings.isRussian ? 'Нет соединения' : 'Connection lost', scheme.error),
+      SessionStatus.closed => (strings.isRussian ? 'Сессия завершена' : 'Session closed', scheme.outline),
     };
 
     return Container(
@@ -437,8 +687,12 @@ class _StatusBar extends StatelessWidget {
             ),
             label: Text(
               isCompact
-                  ? (filesOpen ? 'Консоль' : 'Файлы')
-                  : (DesktopEnv.isDesktop ? 'Файлы  Ctrl+Shift+E' : 'Файлы'),
+                  ? (filesOpen
+                      ? (strings.isRussian ? 'Консоль' : 'Console')
+                      : (strings.isRussian ? 'Файлы' : 'Files'))
+                  : (DesktopEnv.isDesktop
+                      ? (strings.isRussian ? 'Файлы  Ctrl+Shift+E' : 'Files  Ctrl+Shift+E')
+                      : (strings.isRussian ? 'Файлы' : 'Files')),
             ),
           ),
           if (tab.status != SessionStatus.connecting) ...[
@@ -450,7 +704,11 @@ class _StatusBar extends StatelessWidget {
               ),
               onPressed: onReconnect,
               icon: const Icon(Icons.refresh, size: 14),
-              label: Text(isCompact ? 'Переподкл.' : 'Переподключить'),
+              label: Text(
+                isCompact
+                    ? (strings.isRussian ? 'Переподкл.' : 'Reconnect')
+                    : (strings.isRussian ? 'Переподключить' : 'Reconnect'),
+              ),
             ),
           ],
         ],

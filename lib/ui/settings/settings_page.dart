@@ -183,6 +183,30 @@ class SettingsPage extends ConsumerWidget {
                       value: s.showAccessoryBar,
                       onChanged: ctrl.setShowAccessoryBar,
                     ),
+                    const SizedBox(height: 8),
+                    _Row(
+                      title: 'Язык меню Termux',
+                      child: DropdownButton<AppLanguage>(
+                        value: s.language,
+                        underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        items: const [
+                          DropdownMenuItem(
+                            value: AppLanguage.auto,
+                            child: Text('Авто (Android / система)'),
+                          ),
+                          DropdownMenuItem(
+                            value: AppLanguage.ru,
+                            child: Text('Русский (Russian)'),
+                          ),
+                          DropdownMenuItem(
+                            value: AppLanguage.en,
+                            child: Text('English'),
+                          ),
+                        ],
+                        onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Text(DesktopEnv.isMobile ? 'Тап двумя пальцами' : 'Правый клик и тап двумя пальцами',
                         style: theme.textTheme.titleSmall),

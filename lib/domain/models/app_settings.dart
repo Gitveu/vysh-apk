@@ -36,6 +36,18 @@ enum TitleBarMode {
   custom,
 }
 
+/// Язык интерфейса приложения.
+enum AppLanguage {
+  /// Автоматически по языку системы Android / ОС.
+  auto,
+
+  /// Русский язык.
+  ru,
+
+  /// English.
+  en,
+}
+
 class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.system,
@@ -55,6 +67,7 @@ class AppSettings {
     this.keepAliveSeconds = 60,
     this.appIcon = 'default',
     this.showAccessoryBar = true,
+    this.language = AppLanguage.auto,
   });
 
   final ThemeMode themeMode;
@@ -97,6 +110,9 @@ class AppSettings {
 
   final TitleBarMode titleBarMode;
 
+  /// Язык интерфейса ('auto', 'ru', 'en').
+  final AppLanguage language;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     int? seedColor,
@@ -115,6 +131,7 @@ class AppSettings {
     int? keepAliveSeconds,
     String? appIcon,
     bool? showAccessoryBar,
+    AppLanguage? language,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -134,6 +151,7 @@ class AppSettings {
         keepAliveSeconds: keepAliveSeconds ?? this.keepAliveSeconds,
         appIcon: appIcon ?? this.appIcon,
         showAccessoryBar: showAccessoryBar ?? this.showAccessoryBar,
+        language: language ?? this.language,
       );
 
   Map<String, Object?> toJson() => {
@@ -154,6 +172,7 @@ class AppSettings {
         'keepAliveSeconds': keepAliveSeconds,
         'appIcon': appIcon,
         'showAccessoryBar': showAccessoryBar,
+        'language': language.name,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -187,5 +206,9 @@ class AppSettings {
         keepAliveSeconds: (json['keepAliveSeconds'] as num?)?.toInt() ?? 60,
         appIcon: json['appIcon'] as String? ?? 'default',
         showAccessoryBar: json['showAccessoryBar'] as bool? ?? true,
+        language: AppLanguage.values.firstWhere(
+          (l) => l.name == json['language'],
+          orElse: () => AppLanguage.auto,
+        ),
       );
 }
