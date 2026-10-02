@@ -71,13 +71,8 @@ class SettingsPage extends ConsumerWidget {
                       leading: const Icon(Icons.app_shortcut_outlined),
                       title: const Text('Иконка приложения'),
                       subtitle: Text(switch (s.appIcon) {
-                        'monet' => 'Monet (Динамическая под систему)',
-                        'dark' => 'OLED / Тёмная',
-                        'matrix' => 'Терминал (Matrix Green)',
-                        'discord' => 'Discord',
-                        'spotify' => 'Spotify',
-                        'nothing' => 'Nothing',
-                        _ => 'Основная (Фирменная)',
+                        'monet' => 'Monet (Динамическая)',
+                        _ => 'Основная (Оригинальная)',
                       }),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
