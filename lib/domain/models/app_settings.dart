@@ -53,6 +53,8 @@ class AppSettings {
     this.dotsPath = '',
     this.titleBarMode = TitleBarMode.auto,
     this.keepAliveSeconds = 60,
+    this.appIcon = 'default',
+    this.showAccessoryBar = true,
   });
 
   final ThemeMode themeMode;
@@ -60,6 +62,12 @@ class AppSettings {
   final bool compact;
   final double terminalFontSize;
   final bool copyOnSelect;
+
+  /// Выбранная иконка приложения ('default', 'monet', 'dark', 'matrix').
+  final String appIcon;
+
+  /// Показывать строку горячих клавиш терминала (Ctrl, Esc, стрелки) над клавиатурой.
+  final bool showAccessoryBar;
 
   /// Папка для скачанных файлов; пусто — системная «Загрузки».
   final String downloadsDir;
@@ -105,6 +113,8 @@ class AppSettings {
     String? dotsPath,
     TitleBarMode? titleBarMode,
     int? keepAliveSeconds,
+    String? appIcon,
+    bool? showAccessoryBar,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -122,6 +132,8 @@ class AppSettings {
         dotsPath: dotsPath ?? this.dotsPath,
         titleBarMode: titleBarMode ?? this.titleBarMode,
         keepAliveSeconds: keepAliveSeconds ?? this.keepAliveSeconds,
+        appIcon: appIcon ?? this.appIcon,
+        showAccessoryBar: showAccessoryBar ?? this.showAccessoryBar,
       );
 
   Map<String, Object?> toJson() => {
@@ -140,6 +152,8 @@ class AppSettings {
         'dotsPath': dotsPath,
         'titleBarMode': titleBarMode.name,
         'keepAliveSeconds': keepAliveSeconds,
+        'appIcon': appIcon,
+        'showAccessoryBar': showAccessoryBar,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -171,5 +185,7 @@ class AppSettings {
           orElse: () => TitleBarMode.auto,
         ),
         keepAliveSeconds: (json['keepAliveSeconds'] as num?)?.toInt() ?? 60,
+        appIcon: json['appIcon'] as String? ?? 'default',
+        showAccessoryBar: json['showAccessoryBar'] as bool? ?? true,
       );
 }

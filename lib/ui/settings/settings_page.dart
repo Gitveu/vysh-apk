@@ -13,6 +13,7 @@ import '../../infra/platform/local_files.dart';
 import '../../infra/storage/app_paths.dart';
 import '../theme/app_theme.dart';
 import 'appearance_sections.dart';
+import 'app_icon_picker_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -42,28 +43,13 @@ class SettingsPage extends ConsumerWidget {
                     _Row(
                       title: 'Тема',
                       child: SegmentedButton<ThemeMode>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
                         segments: const [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: Text('Авто'),
-                            icon: Icon(Icons.brightness_auto),
-                            tooltip: 'Системная тема',
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: Text('Светлая'),
-                            icon: Icon(Icons.light_mode_outlined),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: Text('Тёмная'),
-                            icon: Icon(Icons.dark_mode_outlined),
-                          ),
+                          ButtonSegment(value: ThemeMode.system, label: Text('Системная'),
+                              icon: Icon(Icons.brightness_auto)),
+                          ButtonSegment(value: ThemeMode.light, label: Text('Светлая'),
+                              icon: Icon(Icons.light_mode_outlined)),
+                          ButtonSegment(value: ThemeMode.dark, label: Text('Тёмная'),
+                              icon: Icon(Icons.dark_mode_outlined)),
                         ],
                         selected: {s.themeMode},
                         onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
@@ -78,6 +64,25 @@ class SettingsPage extends ConsumerWidget {
                       title: const Text('Компактный интерфейс'),
                       value: s.compact,
                       onChanged: ctrl.setCompact,
+                    ),
+                    const SizedBox(height: 8),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.app_shortcut_outlined),
+                      title: const Text('Иконка приложения'),
+                      subtitle: Text(switch (s.appIcon) {
+                        'monet' => 'Monet (Динамическая под систему)',
+                        'dark' => 'OLED / Тёмная',
+                        'matrix' => 'Терминал (Matrix Green)',
+                        'discord' => 'Discord',
+                        'spotify' => 'Spotify',
+                        'nothing' => 'Nothing',
+                        _ => 'Основная (Фирменная)',
+                      }),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AppIconPickerPage()),
+                      ),
                     ),
                   ],
                 ),
@@ -152,19 +157,15 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: scheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          'root@vysh:~# htop',
-                          style: monoStyle(context,
-                              size: s.terminalFontSize, color: scheme.onSurface),
-                        ),
+                      child: Text(
+                        'root@server:~\$ htop   # пример шрифта',
+                        style: monoStyle(context,
+                            size: s.terminalFontSize, color: scheme.onSurface),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -178,33 +179,33 @@ class SettingsPage extends ConsumerWidget {
                       value: s.copyOnSelect,
                       onChanged: ctrl.setCopyOnSelect,
                     ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.keyboard_outlined),
+                      title: const Text('Панель горячих клавиш (Ctrl, Esc, стрелки)'),
+                      subtitle: const Text('Однострочная панель Termux над клавиатурой на смартфонах.'),
+                      value: s.showAccessoryBar,
+                      onChanged: ctrl.setShowAccessoryBar,
+                    ),
                     const SizedBox(height: 12),
                     Text(DesktopEnv.isMobile ? 'Тап двумя пальцами' : 'Правый клик и тап двумя пальцами',
                         style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     SegmentedButton<RightClickAction>(
-                      showSelectedIcon: false,
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
                       segments: const [
                         ButtonSegment(
-                          value: RightClickAction.menu,
-                          icon: Icon(Icons.menu_open),
-                          label: Text('Меню'),
-                        ),
+                            value: RightClickAction.menu,
+                            icon: Icon(Icons.menu_open),
+                            label: Text('Меню')),
                         ButtonSegment(
-                          value: RightClickAction.paste,
-                          icon: Icon(Icons.content_paste),
-                          label: Text('Вставка'),
-                        ),
+                            value: RightClickAction.paste,
+                            icon: Icon(Icons.content_paste),
+                            label: Text('Вставка')),
                         ButtonSegment(
-                          value: RightClickAction.smart,
-                          icon: Icon(Icons.auto_awesome),
-                          label: Text('Умный'),
-                          tooltip: 'Копировать при выделении, иначе вставить',
-                        ),
+                            value: RightClickAction.smart,
+                            icon: Icon(Icons.auto_awesome),
+                            label: Text('Копировать / вставить')),
                       ],
                       selected: {s.rightClick},
                       onSelectionChanged: (v) => ctrl.setRightClick(v.first),
@@ -359,17 +360,6 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 500 || DesktopEnv.isMobile;
-    if (isCompact) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          child,
-        ],
-      );
-    }
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 16,

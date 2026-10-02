@@ -15,6 +15,7 @@ import '../sftp/sftp_pane.dart';
 import '../theme/app_theme.dart';
 import '../widgets/context_menu.dart';
 import 'connection_failure_view.dart';
+import 'terminal_accessory_bar.dart';
 import 'terminal_theme.dart';
 
 /// Вкладка сессии: терминал + строка состояния.
@@ -341,6 +342,11 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
                   ],
                 ),
         ),
+        if (settings.showAccessoryBar && (!isCompact || !paneOpen))
+          TerminalAccessoryBar(
+            terminal: session.terminal,
+            focusNode: _focus,
+          ),
         _StatusBar(
           tab: widget.tab,
           serverVersion: session.serverVersion,
