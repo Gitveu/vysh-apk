@@ -6,11 +6,13 @@ import 'package:xterm2/xterm.dart';
 
 import '../../domain/models/app_settings.dart';
 import '../../domain/models/session_tab.dart';
+import '../../domain/services/external_colors_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../shell/ui_state.dart';
 import '../sftp/sftp_pane.dart';
 import '../theme/app_theme.dart';
+import '../widgets/context_menu.dart';
 import 'connection_failure_view.dart';
 import 'terminal_theme.dart';
 
@@ -171,74 +173,32 @@ class _SessionViewState extends ConsumerState<SessionView> {
     return map;
   }
 
-  Future<void> _showMenu(Offset position) async {
+  final _menu = GlobalKey<ContextMenuAreaState>();
+
+  void _showMenu(Offset position) {
     final hasSelection = _controller.selection != null;
-    final result = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
-      items: [
-        PopupMenuItem(
-          value: 'copy',
-          enabled: hasSelection,
-          child: const ListTile(
-            dense: true,
-            leading: Icon(Icons.copy, size: 18),
-            title: Text('Копировать'),
-            trailing: Text('Ctrl+Shift+C'),
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'paste',
-          child: ListTile(
-            dense: true,
-            leading: Icon(Icons.paste, size: 18),
-            title: Text('Вставить'),
-            trailing: Text('Ctrl+Shift+V'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'files',
-          child: ListTile(
-            dense: true,
-            leading: Icon(Icons.folder_outlined, size: 18),
-            title: Text('Файлы (SFTP)'),
-            trailing: Text('Ctrl+Shift+E'),
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'log',
-          child: ListTile(
-            dense: true,
-            leading: Icon(Icons.receipt_long_outlined, size: 18),
-            title: Text('Журнал и диагностика'),
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'reconnect',
-          child: ListTile(
-            dense: true,
-            leading: Icon(Icons.refresh, size: 18),
-            title: Text('Переподключить'),
-            trailing: Text('Ctrl+Shift+R'),
-          ),
-        ),
-      ],
-    );
-    switch (result) {
-      case 'copy':
-        _copySelection();
-        _controller.clearSelection();
-      case 'paste':
-        await _paste();
-      case 'files':
-        ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id);
-      case 'log':
-        setState(() => _showLogManually = true);
-      case 'reconnect':
-        ref.read(tabsProvider.notifier).reconnect(widget.tab.id);
-    }
-    _focus.requestFocus();
+    _menu.currentState?.open(position, [
+      menuItem('Копировать',
+          icon: Icons.content_copy,
+          shortcut: Keys.copy,
+          onPressed: hasSelection
+              ? () {
+                  _copySelection();
+                  _controller.clearSelection();
+                }
+              : null),
+      menuItem('Вставить', icon: Icons.content_paste, shortcut: Keys.paste, onPressed: _paste),
+      menuDivider(),
+      menuItem('Файлы (SFTP)',
+          icon: Icons.folder_outlined,
+          shortcut: Keys.files,
+          onPressed: () => ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id)),
+      menuItem('Журнал и диагностика',
+          icon: Icons.receipt_long_outlined,
+          onPressed: () => setState(() => _showLogManually = true)),
+      menuItem('Переподключить',
+          icon: Icons.refresh, shortcut: Keys.reconnect, onPressed: _reconnect),
+    ]);
   }
 
   bool _showLogManually = false;
@@ -254,6 +214,7 @@ class _SessionViewState extends ConsumerState<SessionView> {
     final settings = ref.watch(settingsProvider);
     final scheme = Theme.of(context).colorScheme;
     final paneOpen = ref.watch(sftpPaneProvider).contains(widget.tab.id);
+    final ext = ref.watch(externalColorsProvider);
 
     if (session == null) return const SizedBox.shrink();
 
@@ -280,7 +241,7 @@ class _SessionViewState extends ConsumerState<SessionView> {
           focusNode: _focus,
           autofocus: true,
           shortcuts: _shortcuts(settings.ctrlVPaste),
-          theme: terminalThemeFor(scheme),
+          theme: terminalThemeFor(scheme, ext),
           textStyle: TerminalStyle(
             fontSize: settings.terminalFontSize,
             fontFamily: monoFontFamily,
@@ -307,8 +268,11 @@ class _SessionViewState extends ConsumerState<SessionView> {
             children: [
               Expanded(
                 child: ColoredBox(
-                  color: scheme.surfaceContainerLowest,
-                  child: Stack(
+                  color: terminalBackgroundFor(scheme, ext),
+                  child: ContextMenuArea(
+                    key: _menu,
+                    onClose: () => _focus.requestFocus(),
+                    child: Stack(
                     children: [
                       Positioned.fill(child: terminalView),
                       if (showFailure)
@@ -326,6 +290,7 @@ class _SessionViewState extends ConsumerState<SessionView> {
                           ),
                         ),
                     ],
+                  ),
                   ),
                 ),
               ),

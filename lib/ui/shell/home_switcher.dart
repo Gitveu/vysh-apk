@@ -4,35 +4,66 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/services/hosts_controller.dart';
 import 'ui_state.dart';
 
-/// Переключатель разделов главной: «Хосты · Настройки».
-class HomeSwitcher extends ConsumerWidget {
-  const HomeSwitcher({super.key});
+/// Вкладки главной (M3 primary tabs): «Хосты» и «Настройки».
+class HomeTabs extends ConsumerStatefulWidget {
+  const HomeTabs({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final section = ref.watch(homeSectionProvider);
-    final count = ref.watch(hostsProvider.select((h) => h.length));
+  ConsumerState<HomeTabs> createState() => _HomeTabsState();
+}
 
-    return SegmentedButton<int>(
-      showSelectedIcon: false,
-      style: const ButtonStyle(
-        visualDensity: VisualDensity(horizontal: 0, vertical: -1),
-        padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18)),
-      ),
-      segments: [
-        ButtonSegment(
-          value: 0,
-          icon: const Icon(Icons.dns_outlined),
-          label: Text(count > 0 ? 'Хосты  $count' : 'Хосты'),
-        ),
-        const ButtonSegment(
-          value: 1,
-          icon: Icon(Icons.tune),
-          label: Text('Настройки'),
-        ),
+class _HomeTabsState extends ConsumerState<HomeTabs> with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(
+    length: 2,
+    vsync: this,
+    initialIndex: ref.read(homeSectionProvider),
+  );
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Раздел могут переключить хоткеем (Ctrl+,) — синхронизируем вкладки.
+    ref.listen(homeSectionProvider, (_, next) {
+      if (_tabs.index != next) _tabs.animateTo(next);
+    });
+    final count = ref.watch(hostsProvider.select((h) => h.length));
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget tab(IconData icon, String label, [String? badge]) => Tab(
+          height: 48,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 8),
+              Text(label),
+              if (badge != null) ...[
+                const SizedBox(width: 8),
+                Badge(
+                  label: Text(badge),
+                  backgroundColor: scheme.secondaryContainer,
+                  textColor: scheme.onSecondaryContainer,
+                ),
+              ],
+            ],
+          ),
+        );
+
+    return TabBar(
+      controller: _tabs,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      dividerColor: scheme.outlineVariant,
+      onTap: ref.read(homeSectionProvider.notifier).select,
+      tabs: [
+        tab(Icons.dns_outlined, 'Хосты', count > 0 ? '$count' : null),
+        tab(Icons.tune, 'Настройки'),
       ],
-      selected: {section},
-      onSelectionChanged: (s) => ref.read(homeSectionProvider.notifier).select(s.first),
     );
   }
 }

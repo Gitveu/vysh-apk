@@ -6,6 +6,7 @@ import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/context_menu.dart';
 import 'host_editor.dart';
 
 class HostCard extends ConsumerWidget {
@@ -34,10 +35,12 @@ class HostCard extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final accent = Color(host.color);
 
-    return Card(
+    return ContextMenuArea(
+      child: Builder(builder: (areaContext) => Card(
       child: InkWell(
         onTap: () => ref.read(tabsProvider.notifier).openHost(host),
-        onSecondaryTap: () => showHostEditor(context, host: host),
+        onSecondaryTapUp: (d) =>
+            ContextMenuArea.of(areaContext)?.open(d.globalPosition, _items(context, ref)),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -71,40 +74,38 @@ class HostCard extends ConsumerWidget {
               ),
               if (ref.watch(settingsProvider.select((s) => s.pingHosts)))
                 _Reachability(host: host),
-              PopupMenuButton<String>(
-                tooltip: 'Действия',
-                icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant),
-                onSelected: (v) {
-                  switch (v) {
-                    case 'connect':
-                      ref.read(tabsProvider.notifier).openHost(host);
-                    case 'edit':
-                      showHostEditor(context, host: host);
-                    case 'duplicate':
-                      showHostEditor(context, host: host, duplicate: true);
-                    case 'forget':
-                      ref.read(hostsProvider.notifier).forgetSecrets(host.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Сохранённый пароль для «${host.title}» удалён')),
-                      );
-                    case 'delete':
-                      _confirmDelete(context, ref);
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'connect', child: Text('Подключиться')),
-                  PopupMenuItem(value: 'edit', child: Text('Изменить')),
-                  PopupMenuItem(value: 'duplicate', child: Text('Дублировать')),
-                  PopupMenuItem(value: 'forget', child: Text('Забыть пароль')),
-                  PopupMenuDivider(),
-                  PopupMenuItem(value: 'delete', child: Text('Удалить')),
-                ],
-              ),
+              MenuIconButton(tooltip: 'Действия', items: _items(context, ref)),
             ],
           ),
         ),
       ),
+      )),
     );
+  }
+
+  List<Widget> _items(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return [
+      menuItem('Подключиться',
+          icon: Icons.play_arrow_rounded,
+          onPressed: () => ref.read(tabsProvider.notifier).openHost(host)),
+      menuItem('Изменить',
+          icon: Icons.edit_outlined, onPressed: () => showHostEditor(context, host: host)),
+      menuItem('Дублировать',
+          icon: Icons.copy_all_outlined,
+          onPressed: () => showHostEditor(context, host: host, duplicate: true)),
+      menuItem('Забыть пароль', icon: Icons.key_off_outlined, onPressed: () {
+        ref.read(hostsProvider.notifier).forgetSecrets(host.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Сохранённый пароль для «${host.title}» удалён')),
+        );
+      }),
+      menuDivider(),
+      menuItem('Удалить',
+          icon: Icons.delete_outline,
+          color: scheme.error,
+          onPressed: () => _confirmDelete(context, ref)),
+    ];
   }
 }
 

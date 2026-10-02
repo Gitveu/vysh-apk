@@ -35,7 +35,12 @@ class TerminalSession extends ChangeNotifier {
     required this.secrets,
     required this.knownHosts,
     required this.onStatus,
-  });
+    String? initialPassword,
+  }) : _memPassword = initialPassword;
+
+  /// Пароль, введённый в этой сессии (в редакторе хоста или в диалоге).
+  /// Живёт только в памяти — чтобы переподключение не спрашивало его заново.
+  String? _memPassword;
 
   /// Хост; обновляется перед переподключением, если его отредактировали.
   Host host;
@@ -185,8 +190,11 @@ class TerminalSession extends ChangeNotifier {
     var cancelled = false;
 
     if (host.auth == AuthMethod.password) {
-      password = await secrets.read(passwordKey(host.id));
-      passwordFromStore = password != null;
+      password = _memPassword;
+      if (password == null) {
+        password = await secrets.read(passwordKey(host.id));
+        passwordFromStore = password != null;
+      }
     }
 
     Future<String?> providePassword(bool retry) async {
@@ -225,6 +233,7 @@ class TerminalSession extends ChangeNotifier {
           onLog: (line, debug) => _log(line, debug: debug),
         ));
 
+        _memPassword = password;
         if (rememberPassword && password != null) {
           try {
             await secrets.write(passwordKey(host.id), password!);
@@ -242,6 +251,7 @@ class TerminalSession extends ChangeNotifier {
               await secrets.delete(passwordKey(host.id));
             }
             password = null;
+            _memPassword = null;
             _error('Неверный логин или пароль.');
           case SshFailureKind.keyPassphrase:
             await secrets.delete(passphraseKey(host.id));

@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'domain/models/app_settings.dart';
 import 'domain/services/ports_providers.dart';
+import 'infra/platform/desktop_env.dart';
+import 'infra/platform/window_placement.dart';
 import 'infra/storage/app_paths.dart';
+import 'infra/storage/json_store.dart';
 import 'ui/dialogs/session_prompt_dialogs.dart';
 
 Future<void> main() async {
@@ -15,15 +19,22 @@ Future<void> main() async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
-    // Только заголовок, стартовый и минимальный размер.
-    // Позицию окна не трогаем — пусть решает оконный менеджер.
-    const options = WindowOptions(
+
+    // Настройки нужны до показа окна: от них зависит, чей будет заголовок.
+    final raw = JsonStore('settings.json').readSync();
+    final settings = raw is Map<String, Object?> ? AppSettings.fromJson(raw) : const AppSettings();
+    final custom = DesktopEnv.useCustomTitleBar(settings.titleBarMode);
+
+    final options = WindowOptions(
       title: 'vysh',
-      size: Size(1200, 760),
-      minimumSize: Size(640, 420),
+      minimumSize: WindowPlacement.minSize,
+      titleBarStyle: custom ? TitleBarStyle.hidden : TitleBarStyle.normal,
+      windowButtonVisibility: !custom,
     );
     windowManager.waitUntilReadyToShow(options, () async {
+      final maximize = await WindowPlacement.instance.restore();
       await windowManager.show();
+      if (maximize) await windowManager.maximize();
       await windowManager.focus();
     });
   }

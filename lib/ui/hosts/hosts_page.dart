@@ -7,7 +7,6 @@ import '../../domain/models/host.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
-import '../shell/home_switcher.dart';
 import '../shell/ui_state.dart';
 import 'host_card.dart';
 import 'host_editor.dart';
@@ -86,9 +85,6 @@ class _HostsPageState extends ConsumerState<HostsPage> {
         children: [
           Row(
             children: [
-              const HomeSwitcher(),
-              const SizedBox(width: 16),
-              const Spacer(),
               Flexible(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 360),
@@ -120,7 +116,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const Spacer(),
               FilledButton.icon(
                 onPressed: () => showHostEditor(context),
                 icon: const Icon(Icons.add),

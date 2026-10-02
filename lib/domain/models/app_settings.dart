@@ -12,6 +12,30 @@ enum RightClickAction {
   smart,
 }
 
+/// Откуда брать цвета интерфейса.
+enum ColorSource {
+  /// Свой акцентный цвет из настроек.
+  preset,
+
+  /// Акцент системы: Windows — цвет акцента, Linux — xdg-desktop-portal.
+  system,
+
+  /// Файлы дотов: свой colors.json, caelestia, pywal (Linux).
+  dots,
+}
+
+/// Заголовок окна.
+enum TitleBarMode {
+  /// Свой на Windows, GNOME и KDE; системный в тайлинговых WM.
+  auto,
+
+  /// Рамку и заголовок рисует система / оконный менеджер.
+  system,
+
+  /// Свой заголовок с вкладками.
+  custom,
+}
+
 class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.system,
@@ -25,6 +49,9 @@ class AppSettings {
     this.middleClickPaste = false,
     this.ctrlVPaste = false,
     this.confirmMultilinePaste = true,
+    this.colorSource = ColorSource.preset,
+    this.dotsPath = '',
+    this.titleBarMode = TitleBarMode.auto,
   });
 
   final ThemeMode themeMode;
@@ -50,6 +77,13 @@ class AppSettings {
   /// Спрашивать перед вставкой нескольких строк.
   final bool confirmMultilinePaste;
 
+  final ColorSource colorSource;
+
+  /// Свой путь к файлу цветов; пусто — искать автоматически.
+  final String dotsPath;
+
+  final TitleBarMode titleBarMode;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     int? seedColor,
@@ -62,6 +96,9 @@ class AppSettings {
     bool? middleClickPaste,
     bool? ctrlVPaste,
     bool? confirmMultilinePaste,
+    ColorSource? colorSource,
+    String? dotsPath,
+    TitleBarMode? titleBarMode,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -75,6 +112,9 @@ class AppSettings {
         middleClickPaste: middleClickPaste ?? this.middleClickPaste,
         ctrlVPaste: ctrlVPaste ?? this.ctrlVPaste,
         confirmMultilinePaste: confirmMultilinePaste ?? this.confirmMultilinePaste,
+        colorSource: colorSource ?? this.colorSource,
+        dotsPath: dotsPath ?? this.dotsPath,
+        titleBarMode: titleBarMode ?? this.titleBarMode,
       );
 
   Map<String, Object?> toJson() => {
@@ -89,6 +129,9 @@ class AppSettings {
         'middleClickPaste': middleClickPaste,
         'ctrlVPaste': ctrlVPaste,
         'confirmMultilinePaste': confirmMultilinePaste,
+        'colorSource': colorSource.name,
+        'dotsPath': dotsPath,
+        'titleBarMode': titleBarMode.name,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -110,5 +153,14 @@ class AppSettings {
         middleClickPaste: json['middleClickPaste'] as bool? ?? false,
         ctrlVPaste: json['ctrlVPaste'] as bool? ?? false,
         confirmMultilinePaste: json['confirmMultilinePaste'] as bool? ?? true,
+        colorSource: ColorSource.values.firstWhere(
+          (c) => c.name == json['colorSource'],
+          orElse: () => ColorSource.preset,
+        ),
+        dotsPath: json['dotsPath'] as String? ?? '',
+        titleBarMode: TitleBarMode.values.firstWhere(
+          (m) => m.name == json['titleBarMode'],
+          orElse: () => TitleBarMode.auto,
+        ),
       );
 }

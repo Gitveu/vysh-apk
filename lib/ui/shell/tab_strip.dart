@@ -1,10 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../domain/models/session_tab.dart';
 import '../../domain/services/tabs_controller.dart';
+import '../widgets/context_menu.dart';
 import 'ui_state.dart';
+import 'window_buttons.dart';
 
 /// Полоса вкладок: закреплённая «главная» + вкладки сессий.
 class TabStrip extends ConsumerWidget {
@@ -16,16 +19,18 @@ class TabStrip extends ConsumerWidget {
     final ctrl = ref.read(tabsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      height: 46,
-      color: scheme.surfaceContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+    final custom = ref.watch(customTitleBarProvider);
+
+    final tabs = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           _HomeTab(selected: state.isHome, onTap: () => ctrl.activate(0)),
           const SizedBox(width: 4),
-          Expanded(
+          Flexible(
             child: ReorderableListView.builder(
+              shrinkWrap: true,
               scrollDirection: Axis.horizontal,
               buildDefaultDragHandles: false,
               itemCount: state.tabs.length,
@@ -53,16 +58,6 @@ class TabStrip extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Настройки (Ctrl+,)',
-            iconSize: 20,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.tune),
-            onPressed: () {
-              ctrl.activate(0);
-              ref.read(homeSectionProvider.notifier).select(1);
-            },
-          ),
-          IconButton(
             tooltip: 'Новая вкладка (Ctrl+Shift+T)',
             iconSize: 20,
             visualDensity: VisualDensity.compact,
@@ -75,6 +70,42 @@ class TabStrip extends ConsumerWidget {
               );
             },
           ),
+        ],
+      ),
+    );
+
+    return Container(
+      height: 46,
+      color: scheme.surfaceContainer,
+      padding: EdgeInsets.only(left: 6, right: custom ? 0 : 6),
+      child: Row(
+        children: [
+          Expanded(
+            // Свой заголовок: пустое место справа от вкладок таскает окно,
+            // двойной клик — развернуть/восстановить.
+            child: custom
+                ? Stack(
+                    children: [
+                      const Positioned.fill(child: DragToMoveArea(child: SizedBox.expand())),
+                      Align(alignment: Alignment.centerLeft, child: tabs),
+                    ],
+                  )
+                : Align(alignment: Alignment.centerLeft, child: tabs),
+          ),
+          IconButton(
+            tooltip: 'Настройки (Ctrl+,)',
+            iconSize: 20,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.tune),
+            onPressed: () {
+              ctrl.activate(0);
+              ref.read(homeSectionProvider.notifier).select(1);
+            },
+          ),
+          if (custom) ...[
+            const SizedBox(width: 6),
+            const WindowButtons(),
+          ],
         ],
       ),
     );
@@ -143,25 +174,17 @@ class _SessionTabChip extends StatefulWidget {
 class _SessionTabChipState extends State<_SessionTabChip> {
   bool _hover = false;
 
-  Future<void> _showMenu(Offset position) async {
-    final result = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
-      items: const [
-        PopupMenuItem(value: 'reconnect', child: Text('Переподключить')),
-        PopupMenuItem(value: 'duplicate', child: Text('Дублировать')),
-        PopupMenuDivider(),
-        PopupMenuItem(value: 'close', child: Text('Закрыть')),
-      ],
-    );
-    switch (result) {
-      case 'reconnect':
-        widget.onReconnect();
-      case 'duplicate':
-        widget.onDuplicate();
-      case 'close':
-        widget.onClose();
-    }
+  final _menu = GlobalKey<ContextMenuAreaState>();
+
+  void _showMenu(Offset position) {
+    _menu.currentState?.open(position, [
+      menuItem('Переподключить',
+          icon: Icons.refresh, shortcut: Keys.reconnect, onPressed: widget.onReconnect),
+      menuItem('Дублировать', icon: Icons.copy_all_outlined, onPressed: widget.onDuplicate),
+      menuDivider(),
+      menuItem('Закрыть вкладку',
+          icon: Icons.close, shortcut: Keys.closeTab, onPressed: widget.onClose),
+    ]);
   }
 
   @override
@@ -177,7 +200,9 @@ class _SessionTabChipState extends State<_SessionTabChip> {
         onPointerDown: (e) {
           if (e.buttons == kMiddleMouseButton) widget.onClose();
         },
-        child: GestureDetector(
+        child: ContextMenuArea(
+          key: _menu,
+          child: GestureDetector(
           onSecondaryTapUp: (d) => _showMenu(d.globalPosition),
           child: _TabSurface(
             selected: widget.selected,
@@ -218,6 +243,7 @@ class _SessionTabChipState extends State<_SessionTabChip> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

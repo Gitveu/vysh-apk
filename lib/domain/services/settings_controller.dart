@@ -28,6 +28,9 @@ class SettingsController extends Notifier<AppSettings> {
   void setMiddleClickPaste(bool v) => _update(state.copyWith(middleClickPaste: v));
   void setCtrlVPaste(bool v) => _update(state.copyWith(ctrlVPaste: v));
   void setConfirmMultilinePaste(bool v) => _update(state.copyWith(confirmMultilinePaste: v));
+  void setColorSource(ColorSource v) => _update(state.copyWith(colorSource: v));
+  void setDotsPath(String v) => _update(state.copyWith(dotsPath: v));
+  void setTitleBarMode(TitleBarMode v) => _update(state.copyWith(titleBarMode: v));
 
   void _update(AppSettings next) {
     state = next;

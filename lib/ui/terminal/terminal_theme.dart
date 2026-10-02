@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:xterm2/xterm.dart';
 
+import '../../domain/models/external_colors.dart';
+
 /// Тема терминала из текущей M3-схемы: фон/текст/курсор — от акцента
 /// приложения, 16 ANSI-цветов — сбалансированная палитра под тёмную/светлую тему.
-TerminalTheme terminalThemeFor(ColorScheme scheme) {
+TerminalTheme terminalThemeFor(ColorScheme scheme, [ExternalColors? ext]) {
   final dark = scheme.brightness == Brightness.dark;
-  final p = dark ? _darkAnsi : _lightAnsi;
+  // Палитра из дотов (pywal, caelestia) — только если доты того же режима.
+  final fromDots = ext?.ansi != null && (ext!.brightness == null || ext.brightness == scheme.brightness);
+  final p = fromDots ? ext.ansi! : (dark ? _darkAnsi : _lightAnsi);
   return TerminalTheme(
     cursor: scheme.primary,
     selection: scheme.primary.withValues(alpha: 0.32),
-    foreground: scheme.onSurface,
-    background: dark ? scheme.surfaceContainerLowest : scheme.surfaceContainerLowest,
+    foreground: (fromDots ? ext.terminalForeground : null) ?? scheme.onSurface,
+    background: terminalBackgroundFor(scheme, ext),
     black: p[0],
     red: p[1],
     green: p[2],
@@ -47,3 +51,9 @@ const _lightAnsi = <Color>[
   Color(0xFF6C6F85), Color(0xFFDE293E), Color(0xFF49AF3D), Color(0xFFEEA02D),
   Color(0xFF456EED), Color(0xFFFE85D8), Color(0xFF2D9FA8), Color(0xFFBCC0CC),
 ];
+
+/// Фон терминала: из дотов (если режим совпадает) или самый тёмный/светлый слой темы.
+Color terminalBackgroundFor(ColorScheme scheme, [ExternalColors? ext]) {
+  final match = ext != null && (ext.brightness == null || ext.brightness == scheme.brightness);
+  return (match ? ext.terminalBackground : null) ?? scheme.surfaceContainerLowest;
+}

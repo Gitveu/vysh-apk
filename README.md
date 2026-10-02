@@ -10,7 +10,7 @@
 ![Linux](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)
 ![Material 3](https://img.shields.io/badge/Material-3-757575?logo=materialdesign&logoColor=white)
 
-[Скачать](../../releases/latest) · [Возможности](#возможности) · [Горячие клавиши](#горячие-клавиши) · [Сборка](#сборка-из-исходников) · [Архитектура](docs/ARCHITECTURE.md)
+[Скачать](../../releases/latest) · [Возможности](#возможности) · [Горячие клавиши](#горячие-клавиши) · [Темы](docs/THEMES.md) · [Что нового](CHANGELOG.md) · [Сборка](#сборка-из-исходников)
 
 </div>
 
@@ -34,6 +34,7 @@
 
 ### 🔐 Подключение
 - Пароль, ключ (OpenSSH, с парольной фразой), стандартные ключи из `~/.ssh`
+- Пароль можно ввести сразу в карточке хоста или при подключении — и запомнить или нет
 - keyboard-interactive: PAM, одноразовые коды
 - Проверка ключа сервера: предупреждение при первом подключении и при смене ключа
 - Пароли — в системном хранилище: DPAPI на Windows, Secret Service (gnome-keyring / KWallet) на Linux
@@ -51,8 +52,11 @@
 
 ### 🎨 Внешний вид
 - Material 3 / Material You, светлая и тёмная темы, 9 акцентных цветов
-- Тема терминала подстраивается под акцент
-- Обычное окно без хаков: корректно ведёт себя в Hyprland, sway, KDE, GNOME и Windows
+- Цвета из системы: акцент Windows или xdg-portal (GNOME, KDE)
+- Цвета из дотов: caelestia и pywal подхватываются сами, matugen и wallust — готовыми шаблонами; обновляются на лету при смене обоев → [docs/THEMES.md](docs/THEMES.md)
+- Тема терминала подстраивается под акцент, а с дотами берёт их 16 цветов
+- Свой заголовок окна с вкладками на Windows, GNOME и KDE; в тайлинговых WM (Hyprland, sway, i3) — обычное окно без рамок и хаков
+- Окно открывается там же и того же размера, где его закрыли (на Wayland позицию решает композитор)
 
 ## Установка
 
@@ -104,7 +108,7 @@ tar -xzf vysh-<версия>-linux-x64.tar.gz -C ~/.local/opt/vysh
 Нужны [Flutter](https://docs.flutter.dev/get-started/install) (stable), а для Windows — Visual Studio 2022 с компонентами «Desktop development with C++» и «C++ ATL».
 
 ```sh
-git clone <этот репозиторий> && cd vysh
+git clone https://github.com/vyto4ka/vysh && cd vysh
 flutter pub get
 flutter run -d windows   # или: -d linux
 ```
@@ -118,16 +122,13 @@ powershell -ExecutionPolicy Bypass -File tools\build-windows.ps1
 Для Linux дополнительно: `ninja-build libgtk-3-dev libsecret-1-dev`, затем `flutter build linux --release`.
 
 ### Релизы
-Сборки делает GitHub Actions: тег `vX.Y.Z` → Windows-zip и Linux-архив в [Releases](../../releases).
-```sh
-git tag v0.2.0 && git push origin v0.2.0
-```
+Сборки делает GitHub Actions: тег `vX.Y.Z` → Windows-zip и Linux-архив в [Releases](../../releases), текст релиза берётся из [CHANGELOG.md](CHANGELOG.md). Порядок действий — в [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Стек
 
 [Flutter](https://flutter.dev) · [Riverpod](https://riverpod.dev) · [dartssh2](https://pub.dev/packages/dartssh2) (SSH и SFTP) · [xterm2](https://pub.dev/packages/xterm2) (терминал) · [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)
 
-Подробности — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Подробности — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). История изменений — в [CHANGELOG.md](CHANGELOG.md).
 
 ## Планы
 
@@ -135,8 +136,8 @@ git tag v0.2.0 && git push origin v0.2.0
 - [x] Пароли и ключи, проверка ключа сервера
 - [x] SFTP с очередью передач
 - [x] Диагностика подключения
-- [ ] Цвета из системы и дотов: акцент Windows, pywal, matugen, caelestia — с обновлением на лету
-- [ ] Свой заголовок окна с вкладками (Windows / GNOME / KDE)
+- [x] Цвета из системы и дотов: акцент Windows, pywal, matugen, caelestia — с обновлением на лету
+- [x] Свой заголовок окна с вкладками (Windows / GNOME / KDE)
 - [ ] AppImage, .deb, AUR, установщик для Windows, поддержка отечественных дистрибутивов
 - [ ] Сниппеты, проброс портов, jump host, разделение вкладки на панели
 - [ ] ssh-agent / Pageant, хранилище с мастер-паролем

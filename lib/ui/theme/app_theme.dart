@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/models/external_colors.dart';
+
 /// Предустановленные акцентные цвета (seed для Material You).
 const seedPresets = <(String, int)>[
   ('Фиалка', 0xFF6750A4),
@@ -29,8 +31,13 @@ ThemeData buildTheme({
   required Color seed,
   required Brightness brightness,
   bool compact = false,
+  Map<String, Color>? roles,
 }) {
-  final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: brightness);
+  // Схема из одного цвета (как Material You), поверх — готовые роли из дотов.
+  final scheme = applyRoles(
+    ColorScheme.fromSeed(seedColor: seed, brightness: brightness),
+    roles,
+  );
   final radius = BorderRadius.circular(16);
 
   return ThemeData(
@@ -61,6 +68,57 @@ ThemeData buildTheme({
       textStyle: TextStyle(color: scheme.onInverseSurface, fontSize: 12),
     ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    // Меню M3 (Expressive): скруглённый контейнер с внутренним отступом,
+    // пункты — «пилюли» с тональной подсветкой при наведении.
+    menuTheme: MenuThemeData(
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        elevation: const WidgetStatePropertyAll(3),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
+      ),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(220, 44)),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return Colors.transparent;
+          if (states.contains(WidgetState.pressed)) {
+            return scheme.secondaryContainer.withValues(alpha: 0.85);
+          }
+          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) {
+            return scheme.secondaryContainer;
+          }
+          return Colors.transparent;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return scheme.onSurface.withValues(alpha: 0.38);
+          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) {
+            return scheme.onSecondaryContainer;
+          }
+          return scheme.onSurface;
+        }),
+        iconColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return scheme.onSurface.withValues(alpha: 0.38);
+          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) {
+            return scheme.onSecondaryContainer;
+          }
+          return scheme.onSurfaceVariant;
+        }),
+        // Без лишнего «серого» слоя поверх — подсветку даёт backgroundColor.
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+    ),
   );
 }
 

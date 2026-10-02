@@ -67,11 +67,22 @@ jobs:
     needs: [linux, windows]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # нужны теги — для ссылки «все изменения»
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+      - name: Текст релиза из CHANGELOG.md
+        id: notes
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: python3 tools/release/make_notes.py dist > notes.md
       - uses: softprops/action-gh-release@v2
         with:
+          name: ${{ steps.notes.outputs.name }}
+          body_path: notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*
-          generate_release_notes: true

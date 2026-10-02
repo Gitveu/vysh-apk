@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/version.dart';
 import '../../domain/models/app_settings.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../infra/platform/local_files.dart';
 import '../../infra/storage/app_paths.dart';
-import '../shell/home_switcher.dart';
 import '../theme/app_theme.dart';
+import 'appearance_sections.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -23,8 +24,7 @@ class SettingsPage extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
       children: [
-        const Align(alignment: Alignment.centerLeft, child: HomeSwitcher()),
-        const SizedBox(height: 20),
+
         Align(
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
@@ -52,30 +52,8 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text('Акцентный цвет', style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        for (final (name, color) in seedPresets)
-                          _SeedSwatch(
-                            name: name,
-                            color: Color(color),
-                            selected: s.seedColor == color,
-                            onTap: () => ctrl.setSeedColor(color),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      enabled: false,
-                      leading: const Icon(Icons.wallpaper_outlined),
-                      title: const Text('Цвета из системы и дотов'),
-                      subtitle: const Text(
-                          'Акцент Windows, xdg-portal, pywal / matugen / caelestia — этап 4'),
-                    ),
+                    const ColorSourceSection(),
+                    const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.density_medium),
@@ -84,6 +62,11 @@ class SettingsPage extends ConsumerWidget {
                       onChanged: ctrl.setCompact,
                     ),
                   ],
+                ),
+                _Section(
+                  icon: Icons.web_asset,
+                  title: 'Окно',
+                  children: const [TitleBarSection()],
                 ),
                 _Section(
                   icon: Icons.dns_outlined,
@@ -260,7 +243,7 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.info_outline,
                   title: 'О программе',
                   children: [
-                    Text('vysh 0.1.0', style: theme.textTheme.titleMedium),
+                    Text('vysh $appVersion', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text('Минималистичный SSH-менеджер подключений для Windows и Linux.',
                         style: theme.textTheme.bodyMedium
@@ -327,66 +310,6 @@ class _Row extends StatelessWidget {
         SizedBox(width: 140, child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
         child,
       ],
-    );
-  }
-}
-
-class _SeedSwatch extends StatelessWidget {
-  const _SeedSwatch({
-    required this.name,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String name;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: color,
-      brightness: Theme.of(context).brightness,
-    );
-    final outline = Theme.of(context).colorScheme.onSurface;
-
-    return Tooltip(
-      message: name,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          width: 64,
-          height: 64,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: selected ? outline : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
-              children: [
-                Expanded(child: Container(color: scheme.primary)),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(child: Container(color: scheme.secondaryContainer)),
-                      Expanded(child: Container(color: scheme.tertiaryContainer)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

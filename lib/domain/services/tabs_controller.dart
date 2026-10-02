@@ -29,7 +29,9 @@ class TabsController extends Notifier<TabsState> {
 
   TerminalSession? sessionOf(String tabId) => _sessions[tabId];
 
-  void openHost(Host host) {
+  /// [password] — введённый в редакторе пароль: используется для этой сессии,
+  /// даже если пользователь не стал сохранять его в хранилище.
+  void openHost(Host host, {String? password}) {
     final tab = SessionTab(id: newId(), host: host, title: host.title);
     final session = TerminalSession(
       host: host,
@@ -38,6 +40,7 @@ class TabsController extends Notifier<TabsState> {
       secrets: ref.read(secretStoreProvider),
       knownHosts: ref.read(knownHostsProvider),
       onStatus: (s) => _setStatus(tab.id, s),
+      initialPassword: password,
     );
     _sessions[tab.id] = session;
     state = TabsState(tabs: [...state.tabs, tab], active: state.tabs.length + 1);

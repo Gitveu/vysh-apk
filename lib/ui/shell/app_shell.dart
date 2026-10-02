@@ -1,12 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../domain/services/tabs_controller.dart';
 import '../hosts/host_editor.dart';
 import '../hosts/hosts_page.dart';
 import '../settings/settings_page.dart';
 import '../terminal/session_view.dart';
+import 'home_switcher.dart';
 import 'tab_strip.dart';
 import 'ui_state.dart';
 
@@ -92,8 +96,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final tabs = ref.watch(tabsProvider);
 
-    return Scaffold(
-      body: Column(
+    final body = Column(
         children: [
           const TabStrip(),
           Expanded(
@@ -111,7 +114,12 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ),
         ],
-      ),
+      );
+
+    // Linux без системной рамки: края окна тянем сами.
+    final resizable = Platform.isLinux && ref.watch(customTitleBarProvider);
+    return Scaffold(
+      body: resizable ? DragToResizeArea(resizeEdgeSize: 6, child: body) : body,
     );
   }
 }
@@ -138,7 +146,15 @@ class _HomeView extends ConsumerWidget {
 
     return ColoredBox(
       color: scheme.surface,
-      child: AnimatedSwitcher(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 12, top: 4),
+            child: HomeTabs(),
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
         switchInCurve: Curves.easeOutCubic,
         transitionBuilder: (child, anim) => FadeTransition(
@@ -151,6 +167,9 @@ class _HomeView extends ConsumerWidget {
         child: section == 0
             ? const HostsPage(key: ValueKey('hosts'))
             : const SettingsPage(key: ValueKey('settings')),
+      ),
+          ),
+        ],
       ),
     );
   }

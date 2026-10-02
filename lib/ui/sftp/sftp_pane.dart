@@ -12,6 +12,7 @@ import '../../domain/services/tabs_controller.dart';
 import '../../domain/services/transfer_queue.dart';
 import '../../infra/platform/local_files.dart';
 import '../theme/app_theme.dart';
+import '../widgets/context_menu.dart';
 import 'sftp_dialogs.dart';
 import 'transfers_view.dart';
 
@@ -54,6 +55,7 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
 
   @override
   void dispose() {
+    _listFocus.dispose();
     _pathField.dispose();
     super.dispose();
   }
@@ -252,6 +254,7 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
   }
 
   void _select(RemoteEntry e) {
+    _listFocus.requestFocus();
     final keys = HardwareKeyboard.instance;
     setState(() {
       if (keys.isShiftPressed && _anchor != null) {
@@ -276,7 +279,10 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
     });
   }
 
-  Future<void> _contextMenu(RemoteEntry? e, Offset pos) async {
+  final _menu = GlobalKey<ContextMenuAreaState>();
+  final _listFocus = FocusNode(debugLabel: 'sftp-list');
+
+  void _contextMenu(RemoteEntry? e, Offset pos) {
     if (e != null && !_selected.contains(e.path)) {
       setState(() {
         _selected
@@ -285,66 +291,78 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
         _anchor = e.path;
       });
     }
+    _listFocus.requestFocus();
     final sel = _selection;
     final single = sel.length == 1 ? sel.first : null;
-    final result = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: [
-        if (single != null && !single.isDir)
-          _item('open', Icons.open_in_new, 'Открыть'),
-        if (single != null && single.isDir)
-          _item('cd', Icons.folder_open, 'Открыть папку'),
-        if (sel.isNotEmpty) ...[
-          _item('download', Icons.download, 'Скачать'),
-          _item('downloadTo', Icons.drive_folder_upload, 'Скачать в…'),
-        ],
-        if (single != null) ...[
-          _item('rename', Icons.drive_file_rename_outline, 'Переименовать'),
-          _item('chmod', Icons.lock_outline, 'Права доступа'),
-          _item('copyPath', Icons.content_copy, 'Копировать путь'),
-        ],
-        if (sel.isNotEmpty) _item('delete', Icons.delete_outline, 'Удалить'),
-        if (sel.isNotEmpty) const PopupMenuDivider(),
-        _item('upload', Icons.upload_file, 'Загрузить файлы…'),
-        _item('uploadDir', Icons.drive_folder_upload_outlined, 'Загрузить папку…'),
-        _item('mkdir', Icons.create_new_folder_outlined, 'Новая папка'),
-        _item('refresh', Icons.refresh, 'Обновить'),
+    final error = Theme.of(context).colorScheme.error;
+    _menu.currentState?.open(pos, [
+      if (single != null && !single.isDir)
+        menuItem('Открыть', icon: Icons.open_in_new, onPressed: () => _openLocally(single)),
+      if (single != null && single.isDir)
+        menuItem('Открыть папку', icon: Icons.folder_open, onPressed: () => _open(single.path)),
+      if (sel.isNotEmpty) ...[
+        menuItem('Скачать', icon: Icons.download, onPressed: () => _download(sel)),
+        menuItem('Скачать в…', icon: Icons.drive_file_move_outlined, onPressed: () => _downloadTo(sel)),
       ],
-    );
-    switch (result) {
-      case 'open':
-        _openLocally(single!);
-      case 'cd':
-        _open(single!.path);
-      case 'download':
-        _download(sel);
-      case 'downloadTo':
-        _downloadTo(sel);
-      case 'rename':
-        _rename(single!);
-      case 'chmod':
-        _chmod(single!);
-      case 'copyPath':
-        Clipboard.setData(ClipboardData(text: single!.path));
-      case 'delete':
-        _delete(sel);
-      case 'upload':
-        _uploadFiles();
-      case 'uploadDir':
-        _uploadFolder();
-      case 'mkdir':
-        _mkdir();
-      case 'refresh':
-        _refresh();
-    }
+      if (single != null) ...[
+        menuItem('Переименовать',
+            icon: Icons.drive_file_rename_outline,
+            shortcut: Keys.rename,
+            onPressed: () => _rename(single)),
+        menuItem('Права доступа', icon: Icons.lock_outline, onPressed: () => _chmod(single)),
+        menuItem('Копировать путь',
+            icon: Icons.content_copy,
+            onPressed: () => Clipboard.setData(ClipboardData(text: single.path))),
+      ],
+      if (sel.isNotEmpty) ...[
+        menuItem('Удалить',
+            icon: Icons.delete_outline,
+            shortcut: Keys.delete,
+            color: error,
+            onPressed: () => _delete(sel)),
+        menuDivider(),
+      ],
+      ..._folderItems(),
+    ]);
   }
 
-  PopupMenuItem<String> _item(String value, IconData icon, String text) => PopupMenuItem(
-        value: value,
-        height: 40,
-        child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 12), Text(text)]),
-      );
+  /// Пункты, относящиеся к текущей папке (меню «⋮» и пустое место списка).
+  List<Widget> _folderItems() => [
+        menuItem('Загрузить файлы…', icon: Icons.upload_file, onPressed: _uploadFiles),
+        menuItem('Загрузить папку…',
+            icon: Icons.drive_folder_upload_outlined, onPressed: _uploadFolder),
+        menuItem('Новая папка', icon: Icons.create_new_folder_outlined, onPressed: _mkdir),
+        menuDivider(),
+        menuItem('Домашняя папка', icon: Icons.home_outlined, onPressed: _init),
+        menuItem('Обновить', icon: Icons.refresh, shortcut: Keys.refresh, onPressed: _refresh),
+        CheckboxMenuButton(
+          value: _showHidden,
+          onChanged: (_) => setState(() => _showHidden = !_showHidden),
+          child: const Text('Скрытые файлы'),
+        ),
+      ];
+
+  /// Клавиши в списке файлов.
+  Map<ShortcutActivator, VoidCallback> get _keys => {
+        Keys.delete: () => _delete(_selection),
+        Keys.rename: () {
+          final sel = _selection;
+          if (sel.length == 1) _rename(sel.first);
+        },
+        Keys.refresh: _refresh,
+        const SingleActivator(LogicalKeyboardKey.enter): () {
+          final sel = _selection;
+          if (sel.length == 1) _activate(sel.first);
+        },
+        const SingleActivator(LogicalKeyboardKey.backspace): () {
+          if (_cwd != null && _cwd != '/') _open(remoteParent(_cwd!));
+        },
+        const SingleActivator(LogicalKeyboardKey.keyA, control: true): () => setState(() {
+              _selected
+                ..clear()
+                ..addAll(_visible.map((e) => e.path));
+            }),
+      };
 
   // ─── UI ───────────────────────────────────────────────────────────
 
@@ -365,9 +383,16 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
       );
     } else {
       final list = _visible;
-      body = GestureDetector(
+      body = CallbackShortcuts(
+        bindings: _keys,
+        child: Focus(
+        focusNode: _listFocus,
+        child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(_selected.clear),
+          onTap: () {
+            _listFocus.requestFocus();
+            setState(_selected.clear);
+          },
           onSecondaryTapUp: (d) => _contextMenu(null, d.globalPosition),
           child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 8),
@@ -392,10 +417,14 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
               );
             },
           ),
+        ),
+        ),
       );
     }
 
-    return Material(
+    return ContextMenuArea(
+      key: _menu,
+      child: Material(
       color: scheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,36 +466,7 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
                   onPressed: ready ? _refresh : null,
                   icon: const Icon(Icons.refresh),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: 'Ещё',
-                  enabled: ready,
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (v) {
-                    switch (v) {
-                      case 'upload':
-                        _uploadFiles();
-                      case 'uploadDir':
-                        _uploadFolder();
-                      case 'mkdir':
-                        _mkdir();
-                      case 'hidden':
-                        setState(() => _showHidden = !_showHidden);
-                      case 'home':
-                        _init();
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    _item('upload', Icons.upload_file, 'Загрузить файлы…'),
-                    _item('uploadDir', Icons.drive_folder_upload_outlined, 'Загрузить папку…'),
-                    _item('mkdir', Icons.create_new_folder_outlined, 'Новая папка'),
-                    _item('home', Icons.home_outlined, 'Домашняя папка'),
-                    CheckedPopupMenuItem(
-                      value: 'hidden',
-                      checked: _showHidden,
-                      child: const Text('Скрытые файлы'),
-                    ),
-                  ],
-                ),
+                MenuIconButton(enabled: ready, items: _folderItems()),
               ],
             ),
           ),
@@ -516,6 +516,7 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
           ),
           TransfersView(tabId: widget.tab.id),
         ],
+      ),
       ),
     );
   }
