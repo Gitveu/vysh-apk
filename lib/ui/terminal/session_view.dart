@@ -269,6 +269,35 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
       ),
     );
 
+    final isCompact = MediaQuery.sizeOf(context).width < 650 || DesktopEnv.isMobile;
+
+    final terminalArea = ColoredBox(
+      color: terminalBackgroundFor(scheme, ext),
+      child: ContextMenuArea(
+        key: _menu,
+        onClose: () => _focus.requestFocus(),
+        child: Stack(
+          children: [
+            Positioned.fill(child: terminalView),
+            if (showFailure)
+              Positioned.fill(
+                child: ConnectionFailureView(
+                  session: session,
+                  onReconnect: _reconnect,
+                  onDismiss: () {
+                    setState(() {
+                      _failureDismissed = true;
+                      _showLogManually = false;
+                    });
+                    _focus.requestFocus();
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -279,57 +308,38 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
               : null,
         ),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: ColoredBox(
-                  color: terminalBackgroundFor(scheme, ext),
-                  child: ContextMenuArea(
-                    key: _menu,
-                    onClose: () => _focus.requestFocus(),
-                    child: Stack(
-                    children: [
-                      Positioned.fill(child: terminalView),
-                      if (showFailure)
-                        Positioned.fill(
-                          child: ConnectionFailureView(
-                            session: session,
-                            onReconnect: _reconnect,
-                            onDismiss: () {
-                              setState(() {
-                                _failureDismissed = true;
-                                _showLogManually = false;
-                              });
-                              _focus.requestFocus();
-                            },
-                          ),
+          child: isCompact
+              ? IndexedStack(
+                  index: paneOpen ? 1 : 0,
+                  children: [
+                    terminalArea,
+                    SftpPane(tab: widget.tab, active: widget.active && paneOpen),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: terminalArea),
+                    if (paneOpen) ...[
+                      MouseRegion(
+                        cursor: SystemMouseCursors.resizeColumn,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragUpdate: (d) => setState(() {
+                            final max = MediaQuery.sizeOf(context).width * 0.7;
+                            _paneWidth =
+                                (_paneWidth - d.delta.dx).clamp(260, max < 260 ? 260 : max).toDouble();
+                          }),
+                          child: Container(width: 5, color: scheme.outlineVariant.withValues(alpha: 0.5)),
                         ),
+                      ),
+                      SizedBox(
+                        width: _paneWidth,
+                        child: SftpPane(tab: widget.tab, active: widget.active),
+                      ),
                     ],
-                  ),
-                  ),
+                  ],
                 ),
-              ),
-              if (paneOpen) ...[
-                MouseRegion(
-                  cursor: SystemMouseCursors.resizeColumn,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onHorizontalDragUpdate: (d) => setState(() {
-                      final max = MediaQuery.sizeOf(context).width * 0.7;
-                      _paneWidth =
-                          (_paneWidth - d.delta.dx).clamp(260, max < 260 ? 260 : max).toDouble();
-                    }),
-                    child: Container(width: 5, color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                  ),
-                ),
-                SizedBox(
-                  width: _paneWidth,
-                  child: SftpPane(tab: widget.tab, active: widget.active),
-                ),
-              ],
-            ],
-          ),
         ),
         _StatusBar(
           tab: widget.tab,
@@ -366,6 +376,7 @@ class _StatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isCompact = MediaQuery.sizeOf(context).width < 650 || DesktopEnv.isMobile;
     final style = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     final (status, color) = switch (tab.status) {
       SessionStatus.connecting => ('Подключение…', scheme.tertiary),
@@ -375,9 +386,9 @@ class _StatusBar extends StatelessWidget {
     };
 
     return Container(
-      height: 28,
+      height: 32,
       color: scheme.surfaceContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
           Container(
@@ -387,9 +398,16 @@ class _StatusBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(status, style: style),
-          const SizedBox(width: 16),
-          Text(tab.host.displayAddress, style: style),
-          if (serverVersion != null && tab.status == SessionStatus.ready) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              tab.host.displayAddress,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+          if (!isCompact && serverVersion != null && tab.status == SessionStatus.ready) ...[
             const SizedBox(width: 16),
             Flexible(
               child: Text(serverVersion!,
@@ -397,7 +415,7 @@ class _StatusBar extends StatelessWidget {
                   style: style?.copyWith(color: scheme.outline)),
             ),
           ],
-          const Spacer(),
+          const SizedBox(width: 6),
           TextButton.icon(
             style: TextButton.styleFrom(
               visualDensity: VisualDensity.compact,
@@ -405,10 +423,20 @@ class _StatusBar extends StatelessWidget {
               foregroundColor: filesOpen ? scheme.primary : scheme.onSurfaceVariant,
             ),
             onPressed: onToggleFiles,
-            icon: Icon(filesOpen ? Icons.folder_open : Icons.folder_outlined, size: 14),
-            label: Text(DesktopEnv.isDesktop ? 'Файлы  Ctrl+Shift+E' : 'Файлы'),
+            icon: Icon(
+              filesOpen
+                  ? (isCompact ? Icons.terminal_rounded : Icons.folder_open)
+                  : Icons.folder_outlined,
+              size: 14,
+            ),
+            label: Text(
+              isCompact
+                  ? (filesOpen ? 'Консоль' : 'Файлы')
+                  : (DesktopEnv.isDesktop ? 'Файлы  Ctrl+Shift+E' : 'Файлы'),
+            ),
           ),
-          if (tab.status != SessionStatus.connecting)
+          if (tab.status != SessionStatus.connecting) ...[
+            const SizedBox(width: 4),
             TextButton.icon(
               style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
@@ -416,8 +444,9 @@ class _StatusBar extends StatelessWidget {
               ),
               onPressed: onReconnect,
               icon: const Icon(Icons.refresh, size: 14),
-              label: const Text('Переподключить'),
+              label: Text(isCompact ? 'Переподкл.' : 'Переподключить'),
             ),
+          ],
         ],
       ),
     );

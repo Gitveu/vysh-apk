@@ -117,7 +117,9 @@ class TerminalSession extends ChangeNotifier {
       _shell = shell;
 
       terminal.onOutput = (data) => shell.write(utf8.encode(data));
-      terminal.onResize = (w, h, _, _) => shell.resize(w, h);
+      terminal.onResize = (w, h, _, _) {
+        if (w >= 10 && h >= 2) shell.resize(w, h);
+      };
       _outputSub = shell.output
           .cast<List<int>>()
           .transform(const Utf8Decoder(allowMalformed: true))

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../infra/platform/android_wakelock.dart';
 import '../models/host.dart';
 import '../models/session_tab.dart';
 import 'hosts_controller.dart';
@@ -62,10 +63,19 @@ class TabsController extends Notifier<TabsState> {
 
   void _setStatus(String id, SessionStatus status) {
     if (!state.tabs.any((t) => t.id == id)) return;
+    final nextTabs = [for (final t in state.tabs) t.id == id ? t.copyWith(status: status) : t];
     state = TabsState(
-      tabs: [for (final t in state.tabs) t.id == id ? t.copyWith(status: status) : t],
+      tabs: nextTabs,
       active: state.active,
     );
+    final hasActive = nextTabs.any(
+      (t) => t.status == SessionStatus.ready || t.status == SessionStatus.connecting,
+    );
+    if (hasActive) {
+      AndroidWakeLock.acquire();
+    } else {
+      AndroidWakeLock.release();
+    }
   }
 
   void duplicate(String id) {
@@ -87,6 +97,12 @@ class TabsController extends Notifier<TabsState> {
       active -= 1;
     }
     state = TabsState(tabs: tabs, active: active);
+    final hasActive = tabs.any(
+      (t) => t.status == SessionStatus.ready || t.status == SessionStatus.connecting,
+    );
+    if (!hasActive) {
+      AndroidWakeLock.release();
+    }
   }
 
   void closeActive() {
