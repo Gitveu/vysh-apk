@@ -269,17 +269,6 @@ class _AdaptiveIconPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scale = size.width / 512.0;
 
-    // Внешняя граница круга
-    final borderPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 38.0 * scale;
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      236.0 * scale,
-      borderPaint,
-    );
-
     // Лицо >_< в точности по координатам эталона assets/icon.svg:
     final stroke = Paint()
       ..color = color

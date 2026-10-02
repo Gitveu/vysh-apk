@@ -3,11 +3,6 @@
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- Outer circle border (matching benchmark) -->
-    <path
-        android:pathData="M 256,20 A 236,236 0 1,0 256,492 A 236,236 0 1,0 256,20"
-        android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="38" />
     <!-- Cute Kaomoji Face '>_<' in exactly 512x512 from assets/icon.svg -->
     <!-- Left Eye '>' -->
     <path
