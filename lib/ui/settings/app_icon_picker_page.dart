@@ -48,6 +48,10 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Цвета основной иконки (как в iteration 7)
+    const defaultBg = Color(0xFFCAB8E8);
+    const defaultFg = Color(0xFF463553);
+
     // Цвета Monet иконки (динамически из системы Android)
     final monetBg = _monetColors?.background ?? const Color(0xFF18181A);
     final monetGlyph = _monetColors?.accent ?? const Color(0xFFA8DAB5);
@@ -56,10 +60,11 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
     final currentTitle = isMonet ? 'Monet' : 'Основная';
 
     // Цвет кнопки «Оставить такую»
-    const defaultBtnBg = Color(0xFFCAB8E8);
-    const defaultBtnFg = Color(0xFF463553);
-    final buttonColor = isMonet ? monetGlyph : defaultBtnBg;
-    final buttonTextColor = isMonet ? const Color(0xFF1B3722) : defaultBtnFg;
+    final buttonColor = isMonet ? monetGlyph : defaultBg;
+    final buttonTextColor = isMonet ? const Color(0xFF1B3722) : defaultFg;
+
+    final activeBg = isMonet ? monetBg : defaultBg;
+    final activeFg = isMonet ? monetGlyph : defaultFg;
 
     return Scaffold(
       appBar: AppBar(
@@ -70,12 +75,11 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            // Большое превью выбранной иконки (полноразмерное, один в один как на рабочем столе)
+            // Большое превью (полноразмерное, один в один как на рабочем столе в итерации 7)
             _IconGlyph(
               size: 96,
-              isMonet: isMonet,
-              monetBg: monetBg,
-              monetGlyph: monetGlyph,
+              bgColor: activeBg,
+              glyphColor: activeFg,
             ),
             const SizedBox(height: 16),
             Text(
@@ -85,7 +89,7 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
               ),
             ),
             const SizedBox(height: 36),
-            // Выбор между двумя иконками: Основная и Monet
+            // Карточки выбора между Основная и Monet
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Row(
@@ -94,15 +98,15 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
                   _iconCard(
                     id: 'default',
                     title: 'Основная',
-                    isMonet: false,
+                    bgColor: defaultBg,
+                    glyphColor: defaultFg,
                     selected: _selectedId == 'default',
                   ),
                   _iconCard(
                     id: 'monet',
                     title: 'Monet',
-                    isMonet: true,
-                    monetBg: monetBg,
-                    monetGlyph: monetGlyph,
+                    bgColor: monetBg,
+                    glyphColor: monetGlyph,
                     selected: _selectedId == 'monet',
                   ),
                 ],
@@ -140,9 +144,8 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
   Widget _iconCard({
     required String id,
     required String title,
-    required bool isMonet,
-    Color? monetBg,
-    Color? monetGlyph,
+    required Color bgColor,
+    required Color glyphColor,
     required bool selected,
   }) {
     final scheme = Theme.of(context).colorScheme;
@@ -172,9 +175,8 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
               children: [
                 _IconGlyph(
                   size: 60,
-                  isMonet: isMonet,
-                  monetBg: monetBg,
-                  monetGlyph: monetGlyph,
+                  bgColor: bgColor,
+                  glyphColor: glyphColor,
                 ),
                 if (selected)
                   Positioned(
@@ -225,62 +227,21 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
 class _IconGlyph extends StatelessWidget {
   const _IconGlyph({
     required this.size,
-    required this.isMonet,
-    this.monetBg,
-    this.monetGlyph,
+    required this.bgColor,
+    required this.glyphColor,
   });
 
   final double size;
-  final bool isMonet;
-  final Color? monetBg;
-  final Color? monetGlyph;
+  final Color bgColor;
+  final Color glyphColor;
 
   @override
   Widget build(BuildContext context) {
-    Widget iconImage;
-
-    if (!isMonet) {
-      // Истинная оригинальная иконка (один в один со скриншота номер один)
-      iconImage = Image.asset(
-        'assets/icon/ic_launcher.png',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-      );
-    } else {
-      final bg = monetBg ?? const Color(0xFF18181A);
-      final fg = monetGlyph ?? const Color(0xFFA8DAB5);
-      // Маска оригинальной иконки (сохраняет точный крупный размер >_< и пропорции)
-      iconImage = SizedBox(
-        width: size,
-        height: size,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              'assets/icon/ic_bg_mask.png',
-              color: bg,
-              colorBlendMode: BlendMode.srcIn,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-            ),
-            Image.asset(
-              'assets/icon/ic_fg_mask.png',
-              color: fg,
-              colorBlendMode: BlendMode.srcIn,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-            ),
-          ],
-        ),
-      );
-    }
-
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
+        color: bgColor,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
@@ -290,7 +251,56 @@ class _IconGlyph extends StatelessWidget {
           ),
         ],
       ),
-      child: iconImage,
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _AdaptiveIconPainter(color: glyphColor),
+      ),
     );
   }
+}
+
+/// Точная математическая проекция вектора ic_launcher_foreground.xml на видимый круг маски Android
+/// В Android 8+ viewport = 108dp, а круг маски иконки имеет диаметр 72dp с центром в (54dp, 54dp).
+/// Проекция: dx = ((x - 54) / 72 + 0.5) * size, dy = ((y - 54) / 72 + 0.5) * size.
+class _AdaptiveIconPainter extends CustomPainter {
+  const _AdaptiveIconPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * (8.5 / 72.0)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    double mapX(double x) => ((x - 54.0) / 72.0 + 0.5) * size.width;
+    double mapY(double y) => ((y - 54.0) / 72.0 + 0.5) * size.height;
+
+    // Левый шеврон '>' (глаз): M 28,39 L 45,51 L 28,63
+    final leftEye = Path()
+      ..moveTo(mapX(28), mapY(39))
+      ..lineTo(mapX(45), mapY(51))
+      ..lineTo(mapX(28), mapY(63));
+    canvas.drawPath(leftEye, stroke);
+
+    // Правый шеврон '<' (глаз): M 80,39 L 63,51 L 80,63
+    final rightEye = Path()
+      ..moveTo(mapX(80), mapY(39))
+      ..lineTo(mapX(63), mapY(51))
+      ..lineTo(mapX(80), mapY(63));
+    canvas.drawPath(rightEye, stroke);
+
+    // Ротик '_' : M 47,66 L 61,66
+    canvas.drawLine(
+      Offset(mapX(47), mapY(66)),
+      Offset(mapX(61), mapY(66)),
+      stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _AdaptiveIconPainter oldDelegate) => oldDelegate.color != color;
 }
