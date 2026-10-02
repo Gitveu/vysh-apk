@@ -68,11 +68,15 @@ class TabsController extends Notifier<TabsState> {
       tabs: nextTabs,
       active: state.active,
     );
+    final activeTab = nextTabs.firstWhere(
+      (t) => t.status == SessionStatus.ready || t.status == SessionStatus.connecting,
+      orElse: () => nextTabs.first,
+    );
     final hasActive = nextTabs.any(
       (t) => t.status == SessionStatus.ready || t.status == SessionStatus.connecting,
     );
     if (hasActive) {
-      AndroidWakeLock.acquire();
+      AndroidWakeLock.acquire(title: activeTab.host.displayAddress);
     } else {
       AndroidWakeLock.release();
     }

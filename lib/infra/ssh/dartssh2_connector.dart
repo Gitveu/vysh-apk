@@ -53,7 +53,8 @@ class DartSsh2Connector implements SshConnector {
     final sw = Stopwatch()..start();
     final SSHSocket socket;
     try {
-      socket = await SSHSocket.connect(target, r.port, timeout: r.timeout);
+      final raw = await Socket.connect(target, r.port, timeout: r.timeout);
+      socket = _NativeSshSocket(raw);
     } catch (e) {
       log('TCP: ошибка — $e');
       throw SshFailure(SshFailureKind.network, _networkMessage(e, r));
@@ -243,3 +244,32 @@ class _Shell implements SshShell {
     } catch (_) {}
   }
 }
+
+class _NativeSshSocket implements SSHSocket {
+  _NativeSshSocket(this._socket) {
+    try {
+      _socket.setOption(SocketOption.tcpNoDelay, true);
+    } catch (_) {}
+  }
+
+  final Socket _socket;
+
+  @override
+  Stream<Uint8List> get stream => _socket;
+
+  @override
+  StreamSink<List<int>> get sink => _socket;
+
+  @override
+  Future<void> get done => _socket.done;
+
+  @override
+  Future<void> close() => _socket.close();
+
+  @override
+  void destroy() => _socket.destroy();
+
+  @override
+  Future<void> flush() => _socket.flush();
+}
+

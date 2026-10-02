@@ -16,6 +16,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "acquire" -> {
                     try {
+                        val title = call.argument<String>("title") ?: "SSH подключен"
                         if (wakeLock == null) {
                             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
                             wakeLock = powerManager.newWakeLock(
@@ -24,6 +25,7 @@ class MainActivity : FlutterActivity() {
                             ).apply { setReferenceCounted(false) }
                         }
                         wakeLock?.acquire(60 * 60 * 1000L) // 1 hour max
+                        SshForegroundService.start(this, title)
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("WAKELOCK_ERROR", e.message, null)
@@ -34,6 +36,7 @@ class MainActivity : FlutterActivity() {
                         if (wakeLock?.isHeld == true) {
                             wakeLock?.release()
                         }
+                        SshForegroundService.stop(this)
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("WAKELOCK_ERROR", e.message, null)
@@ -49,6 +52,7 @@ class MainActivity : FlutterActivity() {
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()
             }
+            SshForegroundService.stop(this)
         } catch (_: Exception) {}
         super.onDestroy()
     }
