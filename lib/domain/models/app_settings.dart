@@ -52,6 +52,7 @@ class AppSettings {
     this.colorSource = ColorSource.preset,
     this.dotsPath = '',
     this.titleBarMode = TitleBarMode.auto,
+    this.keepAliveSeconds = 60,
   });
 
   final ThemeMode themeMode;
@@ -65,6 +66,10 @@ class AppSettings {
 
   /// Проверять доступность хостов на главной (TCP к порту SSH раз в 30 с).
   final bool pingHosts;
+
+  /// Интервал KeepAlive пакетов в SSH-сессиях в секундах (0 — выключен, 15, 30, 60, 120, 300).
+  /// По умолчанию 60 секунд (1 минута).
+  final int keepAliveSeconds;
 
   final RightClickAction rightClick;
 
@@ -99,6 +104,7 @@ class AppSettings {
     ColorSource? colorSource,
     String? dotsPath,
     TitleBarMode? titleBarMode,
+    int? keepAliveSeconds,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -115,6 +121,7 @@ class AppSettings {
         colorSource: colorSource ?? this.colorSource,
         dotsPath: dotsPath ?? this.dotsPath,
         titleBarMode: titleBarMode ?? this.titleBarMode,
+        keepAliveSeconds: keepAliveSeconds ?? this.keepAliveSeconds,
       );
 
   Map<String, Object?> toJson() => {
@@ -132,6 +139,7 @@ class AppSettings {
         'colorSource': colorSource.name,
         'dotsPath': dotsPath,
         'titleBarMode': titleBarMode.name,
+        'keepAliveSeconds': keepAliveSeconds,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -162,5 +170,6 @@ class AppSettings {
           (m) => m.name == json['titleBarMode'],
           orElse: () => TitleBarMode.auto,
         ),
+        keepAliveSeconds: (json['keepAliveSeconds'] as num?)?.toInt() ?? 60,
       );
 }

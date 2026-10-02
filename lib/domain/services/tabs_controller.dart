@@ -5,6 +5,7 @@ import '../models/session_tab.dart';
 import 'hosts_controller.dart';
 import 'known_hosts.dart';
 import 'ports_providers.dart';
+import 'settings_controller.dart';
 import 'terminal_session.dart';
 import 'transfer_queue.dart';
 
@@ -40,6 +41,7 @@ class TabsController extends Notifier<TabsState> {
       secrets: ref.read(secretStoreProvider),
       knownHosts: ref.read(knownHostsProvider),
       onStatus: (s) => _setStatus(tab.id, s),
+      defaultKeepAliveSeconds: ref.read(settingsProvider).keepAliveSeconds,
       initialPassword: password,
     );
     _sessions[tab.id] = session;

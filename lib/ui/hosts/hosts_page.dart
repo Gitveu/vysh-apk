@@ -156,11 +156,11 @@ class _HostsPageState extends ConsumerState<HostsPage> {
                                 ),
                               ),
                             SliverGrid(
-                              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 360,
+                              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: isCompact ? 600 : 380,
                                 mainAxisExtent: 84,
                                 crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
+                                mainAxisSpacing: 10,
                               ),
                               delegate: SliverChildBuilderDelegate(
                                 (context, i) => HostCard(host: groups[g]![i]),

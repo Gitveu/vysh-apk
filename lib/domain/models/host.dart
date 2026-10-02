@@ -15,6 +15,7 @@ class Host {
     this.group = '',
     this.color = 0xFF6750A4,
     this.lastConnectedAt,
+    this.keepAliveSeconds,
   });
 
   final String id;
@@ -28,10 +29,23 @@ class Host {
   final int color;
   final DateTime? lastConnectedAt;
 
-  String get title => label.trim().isEmpty ? address : label;
+  /// Интервал KeepAlive для этого хоста в секундах.
+  /// null — брать из глобальных настроек (по умолчанию 60 с), 0 — отключить.
+  final int? keepAliveSeconds;
 
-  String get displayAddress =>
-      '$username@$address${port == 22 ? '' : ':$port'}';
+  String get title {
+    final l = label.trim();
+    if (l.isNotEmpty) return l;
+    final a = address.trim();
+    if (a.isNotEmpty) return a;
+    return 'Сервер ${port == 22 ? '' : ':$port'}';
+  }
+
+  String get displayAddress {
+    final u = username.trim().isEmpty ? 'root' : username.trim();
+    final a = address.trim().isEmpty ? 'localhost' : address.trim();
+    return '$u@$a${port == 22 ? '' : ':$port'}';
+  }
 
   Host withLastConnected(DateTime time) => Host(
         id: id,
@@ -44,6 +58,7 @@ class Host {
         group: group,
         color: color,
         lastConnectedAt: time,
+        keepAliveSeconds: keepAliveSeconds,
       );
 
   Map<String, Object?> toJson() => {
@@ -58,6 +73,7 @@ class Host {
         'color': color,
         if (lastConnectedAt != null)
           'lastConnectedAt': lastConnectedAt!.toIso8601String(),
+        if (keepAliveSeconds != null) 'keepAliveSeconds': keepAliveSeconds,
       };
 
   factory Host.fromJson(Map<String, Object?> json) => Host(
@@ -74,6 +90,7 @@ class Host {
         group: json['group'] as String? ?? '',
         color: (json['color'] as num?)?.toInt() ?? 0xFF6750A4,
         lastConnectedAt: DateTime.tryParse(json['lastConnectedAt'] as String? ?? ''),
+        keepAliveSeconds: (json['keepAliveSeconds'] as num?)?.toInt(),
       );
 
   /// Разбор быстрого подключения: `user@host`, `user@host:port`, `host`.

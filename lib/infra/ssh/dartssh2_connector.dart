@@ -95,7 +95,7 @@ class DartSsh2Connector implements SshConnector {
       onUserauthBanner: r.onBanner,
       onAuthenticated: () => log('Вход выполнен'),
       printDebug: (line) => log(line ?? '', true),
-      keepAliveInterval: const Duration(seconds: 30),
+      keepAliveInterval: r.keepAliveInterval <= Duration.zero ? null : r.keepAliveInterval,
       handshakeTimeout: r.timeout,
     );
 

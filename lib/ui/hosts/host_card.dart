@@ -72,8 +72,11 @@ class HostCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (ref.watch(settingsProvider.select((s) => s.pingHosts)))
+              if (ref.watch(settingsProvider.select((s) => s.pingHosts))) ...[
+                const SizedBox(width: 8),
                 _Reachability(host: host),
+              ],
+              const SizedBox(width: 4),
               MenuIconButton(tooltip: 'Действия', items: _items(context, ref)),
             ],
           ),

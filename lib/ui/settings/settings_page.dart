@@ -86,6 +86,24 @@ class SettingsPage extends ConsumerWidget {
                       value: s.pingHosts,
                       onChanged: ctrl.setPingHosts,
                     ),
+                    const SizedBox(height: 8),
+                    _Row(
+                      title: 'SSH KeepAlive (поддержание связи)',
+                      child: DropdownButton<int>(
+                        value: s.keepAliveSeconds,
+                        underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        items: const [
+                          DropdownMenuItem(value: 0, child: Text('Отключён')),
+                          DropdownMenuItem(value: 15, child: Text('15 сек')),
+                          DropdownMenuItem(value: 30, child: Text('30 сек')),
+                          DropdownMenuItem(value: 60, child: Text('60 сек (1 мин) — рекомендовано')),
+                          DropdownMenuItem(value: 120, child: Text('120 сек (2 мин)')),
+                          DropdownMenuItem(value: 300, child: Text('300 сек (5 мин)')),
+                        ],
+                        onChanged: (v) => v != null ? ctrl.setKeepAliveSeconds(v) : null,
+                      ),
+                    ),
                   ],
                 ),
                 _Section(

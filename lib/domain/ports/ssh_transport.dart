@@ -61,6 +61,7 @@ class SshConnectRequest {
     this.onBanner,
     this.onLog,
     this.timeout = const Duration(seconds: 10),
+    this.keepAliveInterval = const Duration(seconds: 60),
   });
 
   final String address;
@@ -83,6 +84,7 @@ class SshConnectRequest {
   /// Журнал подключения: шаг и признак «отладочная строка».
   final void Function(String line, bool debug)? onLog;
   final Duration timeout;
+  final Duration keepAliveInterval;
 }
 
 abstract interface class SshConnector {

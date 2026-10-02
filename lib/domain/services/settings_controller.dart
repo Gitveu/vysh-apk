@@ -31,6 +31,7 @@ class SettingsController extends Notifier<AppSettings> {
   void setColorSource(ColorSource v) => _update(state.copyWith(colorSource: v));
   void setDotsPath(String v) => _update(state.copyWith(dotsPath: v));
   void setTitleBarMode(TitleBarMode v) => _update(state.copyWith(titleBarMode: v));
+  void setKeepAliveSeconds(int seconds) => _update(state.copyWith(keepAliveSeconds: seconds));
 
   void _update(AppSettings next) {
     state = next;

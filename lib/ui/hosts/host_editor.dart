@@ -55,6 +55,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
   late final TextEditingController _group;
   late AuthMethod _auth;
   late int _color;
+  int? _keepAliveSeconds;
   bool _rememberPassword = true;
   bool _hasSavedPassword = false;
   bool _obscure = true;
@@ -77,6 +78,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
     _group = TextEditingController(text: h?.group ?? '');
     _auth = h?.auth ?? AuthMethod.password;
     _color = h?.color ?? hostColors.first;
+    _keepAliveSeconds = h?.keepAliveSeconds;
     if (_isEdit) _checkSavedPassword();
   }
 
@@ -141,6 +143,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
       group: _group.text.trim(),
       color: _color,
       lastConnectedAt: _isEdit ? widget.host!.lastConnectedAt : null,
+      keepAliveSeconds: _keepAliveSeconds,
     );
   }
 
@@ -431,6 +434,26 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                               onTap: () => setState(() => _color = c),
                             ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      _sectionTitle(context, 'Поддержание связи (KeepAlive)'),
+                      DropdownButtonFormField<int?>(
+                        initialValue: _keepAliveSeconds,
+                        decoration: _dec(
+                          'KeepAlive интервал',
+                          helper: 'Защита от разрыва SSH при неактивности или блокировке экрана',
+                          icon: const Icon(Icons.timer_outlined),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('По умолчанию из настроек (60 с)')),
+                          DropdownMenuItem(value: 0, child: Text('Отключён')),
+                          DropdownMenuItem(value: 15, child: Text('15 секунд')),
+                          DropdownMenuItem(value: 30, child: Text('30 секунд')),
+                          DropdownMenuItem(value: 60, child: Text('60 секунд (1 мин) — реком.')),
+                          DropdownMenuItem(value: 120, child: Text('120 секунд (2 мин)')),
+                          DropdownMenuItem(value: 300, child: Text('300 секунд (5 мин)')),
+                        ],
+                        onChanged: (v) => setState(() => _keepAliveSeconds = v),
                       ),
                     ],
                   ),

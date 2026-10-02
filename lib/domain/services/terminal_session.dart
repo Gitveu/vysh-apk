@@ -36,12 +36,16 @@ class TerminalSession extends ChangeNotifier {
     required this.secrets,
     required this.knownHosts,
     required this.onStatus,
+    this.defaultKeepAliveSeconds = 60,
     String? initialPassword,
   }) : _memPassword = initialPassword;
 
   /// Пароль, введённый в этой сессии (в редакторе хоста или в диалоге).
   /// Живёт только в памяти — чтобы переподключение не спрашивало его заново.
   String? _memPassword;
+
+  /// Интервал KeepAlive по умолчанию из настроек (в секундах).
+  final int defaultKeepAliveSeconds;
 
   /// Хост; обновляется перед переподключением, если его отредактировали.
   Host host;
@@ -210,6 +214,9 @@ class TerminalSession extends ChangeNotifier {
       return password;
     }
 
+    final keepSec = host.keepAliveSeconds ?? defaultKeepAliveSeconds;
+    final keepDuration = keepSec <= 0 ? Duration.zero : Duration(seconds: keepSec);
+
     for (var attempt = 0; attempt < 3; attempt++) {
       final retry = attempt > 0;
       try {
@@ -218,6 +225,7 @@ class TerminalSession extends ChangeNotifier {
           port: host.port,
           username: host.username,
           keys: keys,
+          keepAliveInterval: keepDuration,
           password: host.auth == AuthMethod.password ? () => providePassword(retry) : null,
           interactive: (name, instruction, list) async {
             // Обычный «Password:» через keyboard-interactive — отвечаем паролем.
