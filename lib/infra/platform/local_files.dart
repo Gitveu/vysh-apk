@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../storage/app_paths.dart';
+
 /// Работа с локальными файлами и системными приложениями.
 class LocalFiles {
   LocalFiles._();
@@ -14,6 +16,13 @@ class LocalFiles {
 
   /// Папка «Загрузки» по умолчанию.
   static String defaultDownloadsDir() {
+    if (Platform.isAndroid) {
+      const androidDownload = '/storage/emulated/0/Download';
+      if (Directory(androidDownload).existsSync()) {
+        return androidDownload;
+      }
+      return AppPaths.configDir.path;
+    }
     if (Platform.isLinux) {
       // XDG_DOWNLOAD_DIR из ~/.config/user-dirs.dirs (бывает «Загрузки»).
       try {
@@ -52,13 +61,15 @@ class LocalFiles {
 
   /// Открыть файл программой по умолчанию.
   static Future<void> openWithSystem(String path) async {
-    if (Platform.isWindows) {
-      await Process.start('cmd', ['/c', 'start', '', path], mode: ProcessStartMode.detached);
-    } else if (Platform.isMacOS) {
-      await Process.start('open', [path], mode: ProcessStartMode.detached);
-    } else {
-      await Process.start('xdg-open', [path], mode: ProcessStartMode.detached);
-    }
+    try {
+      if (Platform.isWindows) {
+        await Process.start('cmd', ['/c', 'start', '', path], mode: ProcessStartMode.detached);
+      } else if (Platform.isMacOS) {
+        await Process.start('open', [path], mode: ProcessStartMode.detached);
+      } else if (Platform.isLinux) {
+        await Process.start('xdg-open', [path], mode: ProcessStartMode.detached);
+      }
+    } catch (_) {}
   }
 
   /// Показать файл/папку в файловом менеджере.
@@ -67,7 +78,7 @@ class LocalFiles {
       final isDir = Directory(path).existsSync();
       await Process.start('explorer', isDir ? [path] : ['/select,$path'],
           mode: ProcessStartMode.detached);
-    } else {
+    } else if (Platform.isLinux || Platform.isMacOS) {
       final target = Directory(path).existsSync() ? path : File(path).parent.path;
       await openWithSystem(target);
     }

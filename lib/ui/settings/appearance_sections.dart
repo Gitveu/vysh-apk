@@ -54,10 +54,11 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
           segments: [
             const ButtonSegment(
                 value: ColorSource.preset, icon: Icon(Icons.palette_outlined), label: Text('Свои')),
-            ButtonSegment(
-                value: ColorSource.system,
-                icon: const Icon(Icons.computer),
-                label: Text(Platform.isWindows ? 'Акцент Windows' : 'Акцент системы')),
+            if (Platform.isWindows || Platform.isLinux)
+              ButtonSegment(
+                  value: ColorSource.system,
+                  icon: const Icon(Icons.computer),
+                  label: Text(Platform.isWindows ? 'Акцент Windows' : 'Акцент системы')),
             if (Platform.isLinux)
               const ButtonSegment(
                   value: ColorSource.dots, icon: Icon(Icons.wallpaper), label: Text('Из дотов')),
@@ -88,8 +89,10 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
                 notFound: notFound,
                 hint: Platform.isWindows
                     ? 'Цвет берётся из «Параметры → Персонализация → Цвета». Меняется на лету.'
-                    : 'Нужен xdg-desktop-portal с поддержкой accent-color (GNOME 47+, KDE Plasma 6). '
-                        'В тайлинговых WM акцента обычно нет — используйте «Из дотов».',
+                    : Platform.isLinux
+                        ? 'Нужен xdg-desktop-portal с поддержкой accent-color (GNOME 47+, KDE Plasma 6). '
+                          'В тайлинговых WM акцента обычно нет — используйте «Из дотов».'
+                        : 'Системный акцент поддерживается на десктопе.',
               ),
             ColorSource.dots => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -119,7 +119,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Linux без системной рамки: края окна тянем сами.
     final resizable = Platform.isLinux && ref.watch(customTitleBarProvider);
     return Scaffold(
-      body: resizable ? DragToResizeArea(resizeEdgeSize: 6, child: body) : body,
+      body: SafeArea(
+        child: resizable ? DragToResizeArea(resizeEdgeSize: 6, child: body) : body,
+      ),
     );
   }
 }

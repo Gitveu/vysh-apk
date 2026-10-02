@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,11 +65,12 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                 ),
-                _Section(
-                  icon: Icons.web_asset,
-                  title: 'Окно',
-                  children: const [TitleBarSection()],
-                ),
+                if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+                  _Section(
+                    icon: Icons.web_asset,
+                    title: 'Окно',
+                    children: const [TitleBarSection()],
+                  ),
                 _Section(
                   icon: Icons.dns_outlined,
                   title: 'Хосты',
