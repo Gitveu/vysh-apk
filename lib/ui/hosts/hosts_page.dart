@@ -7,6 +7,7 @@ import '../../domain/models/host.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
+import '../../infra/platform/desktop_env.dart';
 import '../shell/ui_state.dart';
 import 'host_card.dart';
 import 'host_editor.dart';
@@ -78,20 +79,22 @@ class _HostsPageState extends ConsumerState<HostsPage> {
       list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     }
 
+    final isCompact = MediaQuery.sizeOf(context).width < 600 || DesktopEnv.isMobile;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+      padding: EdgeInsets.fromLTRB(isCompact ? 16 : 28, isCompact ? 12 : 20, isCompact ? 16 : 28, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Flexible(
+              Expanded(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 360),
+                  constraints: BoxConstraints(maxWidth: isCompact ? double.infinity : 400),
                   child: SearchBar(
                     controller: _search,
                     focusNode: ref.watch(hostSearchFocusProvider),
-                    hintText: 'Поиск или user@host:port',
+                    hintText: isCompact ? 'Поиск хостов...' : 'Поиск или user@host:port',
                     elevation: const WidgetStatePropertyAll(0),
                     constraints: const BoxConstraints(minHeight: 44),
                     leading: const Icon(Icons.search),
@@ -116,15 +119,22 @@ class _HostsPageState extends ConsumerState<HostsPage> {
                   ),
                 ),
               ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: () => showHostEditor(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Новый хост'),
-              ),
+              const SizedBox(width: 10),
+              if (isCompact)
+                IconButton.filled(
+                  onPressed: () => showHostEditor(context),
+                  tooltip: 'Новый хост',
+                  icon: const Icon(Icons.add),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => showHostEditor(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Новый хост'),
+                ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isCompact ? 14 : 20),
           Expanded(
             child: hosts.isEmpty
                 ? _EmptyState(onAdd: () => showHostEditor(context))

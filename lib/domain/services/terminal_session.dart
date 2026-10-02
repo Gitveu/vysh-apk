@@ -12,6 +12,7 @@ import '../ports/secret_store.dart';
 import '../ports/session_prompts.dart';
 import '../ports/sftp.dart';
 import '../ports/ssh_transport.dart';
+import '../../infra/platform/desktop_env.dart';
 import 'known_hosts.dart';
 
 /// Живая сессия одной вкладки: эмулятор терминала + SSH-соединение.
@@ -348,7 +349,9 @@ class TerminalSession extends ChangeNotifier {
   }
 
   void _offerReconnect() {
-    _info('Нажмите Enter, чтобы переподключиться.');
+    _info(DesktopEnv.isDesktop
+        ? 'Нажмите Enter, чтобы переподключиться.'
+        : 'Нажмите «Переподключить», чтобы восстановить связь.');
     terminal.onOutput = (data) {
       if (data.contains('\r') || data.contains('\n')) connect();
     };

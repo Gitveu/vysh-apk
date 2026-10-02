@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../domain/models/session_tab.dart';
 import '../../domain/services/tabs_controller.dart';
+import '../../infra/platform/desktop_env.dart';
 import '../widgets/context_menu.dart';
 import 'ui_state.dart';
 import 'window_buttons.dart';
@@ -58,7 +59,7 @@ class TabStrip extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Новая вкладка (Ctrl+Shift+T)',
+            tooltip: DesktopEnv.isDesktop ? 'Новая вкладка (Ctrl+Shift+T)' : 'Новая вкладка',
             iconSize: 20,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.add),
@@ -93,7 +94,7 @@ class TabStrip extends ConsumerWidget {
                 : Align(alignment: Alignment.centerLeft, child: tabs),
           ),
           IconButton(
-            tooltip: 'Настройки (Ctrl+,)',
+            tooltip: DesktopEnv.isDesktop ? 'Настройки (Ctrl+,)' : 'Настройки',
             iconSize: 20,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.tune),
@@ -228,7 +229,7 @@ class _SessionTabChipState extends State<_SessionTabChip> {
                       duration: const Duration(milliseconds: 120),
                       opacity: _hover || widget.selected ? 1 : 0,
                       child: IconButton(
-                        tooltip: 'Закрыть (Ctrl+Shift+W)',
+                        tooltip: DesktopEnv.isDesktop ? 'Закрыть (Ctrl+Shift+W)' : 'Закрыть',
                         iconSize: 16,
                         visualDensity: VisualDensity.compact,
                         constraints: const BoxConstraints.tightFor(width: 28, height: 28),

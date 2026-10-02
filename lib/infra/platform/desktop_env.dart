@@ -38,6 +38,12 @@ class DesktopEnv {
   static bool get isWayland =>
       Platform.isLinux && (Platform.environment['WAYLAND_DISPLAY']?.isNotEmpty ?? false);
 
+  /// Является ли текущая платформа настольной (ПК/ноутбук).
+  static bool get isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  /// Является ли устройство мобильным (Android/iOS).
+  static bool get isMobile => Platform.isAndroid || Platform.isIOS;
+
   /// Итог настройки «Заголовок окна».
   static bool useCustomTitleBar(TitleBarMode mode) => switch (mode) {
         TitleBarMode.custom => Platform.isWindows || Platform.isLinux,

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/version.dart';
 import '../../domain/models/app_settings.dart';
 import '../../domain/services/settings_controller.dart';
+import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/local_files.dart';
 import '../../infra/storage/app_paths.dart';
 import '../theme/app_theme.dart';
@@ -134,12 +135,15 @@ class SettingsPage extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.content_copy),
                       title: const Text('Копировать при выделении'),
-                      subtitle: const Text('Как в терминалах Linux. Вставка — Ctrl+Shift+V'),
+                      subtitle: Text(DesktopEnv.isDesktop
+                          ? 'Как в терминалах Linux. Вставка — Ctrl+Shift+V'
+                          : 'Автоматически копировать выделенный текст'),
                       value: s.copyOnSelect,
                       onChanged: ctrl.setCopyOnSelect,
                     ),
                     const SizedBox(height: 12),
-                    Text('Правый клик и тап двумя пальцами', style: theme.textTheme.titleSmall),
+                    Text(DesktopEnv.isMobile ? 'Тап двумя пальцами' : 'Правый клик и тап двумя пальцами',
+                        style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     SegmentedButton<RightClickAction>(
                       segments: const [
@@ -161,27 +165,31 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${_rightClickHint(s.rightClick)} Shift + правый клик всегда открывает меню.',
+                      DesktopEnv.isDesktop
+                          ? '${_rightClickHint(s.rightClick)} Shift + правый клик всегда открывает меню.'
+                          : _rightClickHint(s.rightClick),
                       style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.keyboard),
-                      title: const Text('Ctrl+V вставляет'),
-                      subtitle: const Text(
-                          'Как в Windows. Выключено — Ctrl+V уходит в терминал (нужно, например, в vim)'),
-                      value: s.ctrlVPaste,
-                      onChanged: ctrl.setCtrlVPaste,
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.mouse_outlined),
-                      title: const Text('Средняя кнопка мыши вставляет'),
-                      subtitle: const Text('Как в Linux'),
-                      value: s.middleClickPaste,
-                      onChanged: ctrl.setMiddleClickPaste,
-                    ),
+                    if (DesktopEnv.isDesktop) ...[
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        secondary: const Icon(Icons.keyboard),
+                        title: const Text('Ctrl+V вставляет'),
+                        subtitle: const Text(
+                            'Как в Windows. Выключено — Ctrl+V уходит в терминал (нужно, например, в vim)'),
+                        value: s.ctrlVPaste,
+                        onChanged: ctrl.setCtrlVPaste,
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        secondary: const Icon(Icons.mouse_outlined),
+                        title: const Text('Средняя кнопка мыши вставляет'),
+                        subtitle: const Text('Как в Linux'),
+                        value: s.middleClickPaste,
+                        onChanged: ctrl.setMiddleClickPaste,
+                      ),
+                    ],
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.warning_amber_rounded),

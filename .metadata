@@ -24,6 +24,9 @@ migration:
     - platform: android
       create_revision: 19946f91c8d9de18a4674460d015229cc0b2534f
       base_revision: 19946f91c8d9de18a4674460d015229cc0b2534f
+    - platform: web
+      create_revision: 19946f91c8d9de18a4674460d015229cc0b2534f
+      base_revision: 19946f91c8d9de18a4674460d015229cc0b2534f
 
   # User provided section
 

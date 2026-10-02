@@ -9,6 +9,7 @@ import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/ports_providers.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../../domain/services/terminal_session.dart' show expandHome;
+import '../../infra/platform/desktop_env.dart';
 import '../theme/app_theme.dart';
 
 /// Открыть боковую панель создания/редактирования хоста.
@@ -296,7 +297,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                             style: theme.textTheme.titleLarge),
                       ),
                       IconButton(
-                        tooltip: 'Закрыть (Esc)',
+                        tooltip: DesktopEnv.isDesktop ? 'Закрыть (Esc)' : 'Закрыть',
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
                       ),
@@ -450,21 +451,33 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                           icon: const Icon(Icons.delete_outline),
                         ),
                       const Spacer(),
-                      Tooltip(
-                        message: 'Ctrl+Shift+Enter',
-                        child: TextButton(
+                      if (DesktopEnv.isDesktop)
+                        Tooltip(
+                          message: 'Ctrl+Shift+Enter',
+                          child: TextButton(
+                            onPressed: _saving ? null : () => _save(connect: true),
+                            child: const Text('Сохранить и подключиться'),
+                          ),
+                        )
+                      else
+                        TextButton(
                           onPressed: _saving ? null : () => _save(connect: true),
                           child: const Text('Сохранить и подключиться'),
                         ),
-                      ),
                       const SizedBox(width: 8),
-                      Tooltip(
-                        message: 'Ctrl+Enter',
-                        child: FilledButton(
+                      if (DesktopEnv.isDesktop)
+                        Tooltip(
+                          message: 'Ctrl+Enter',
+                          child: FilledButton(
+                            onPressed: _saving ? null : _save,
+                            child: const Text('Сохранить'),
+                          ),
+                        )
+                      else
+                        FilledButton(
                           onPressed: _saving ? null : _save,
                           child: const Text('Сохранить'),
                         ),
-                      ),
                     ],
                   ),
                 ),

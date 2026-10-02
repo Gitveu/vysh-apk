@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Outer Squircle with thick rounded border -->
+  <rect x="38" y="38" width="436" height="436" rx="136" ry="136" fill="#CAB8E8" stroke="#463553" stroke-width="38" stroke-linejoin="round" />
+
+  <!-- CLI Terminal Prompt: Chevron '>' and Underscore Cursor '_' -->
+  <g fill="none" stroke="#463553" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Chevron '>' -->
+    <polyline points="170,196 230,256 170,316" />
+    <!-- Underscore Cursor '_' -->
+    <line x1="270" y1="316" x2="342" y2="316" />
+  </g>
+</svg>

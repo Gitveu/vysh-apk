@@ -8,6 +8,7 @@ import '../../domain/models/host.dart';
 import '../../domain/ports/ssh_transport.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/terminal_session.dart';
+import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/net_diag.dart';
 import '../hosts/host_editor.dart';
 import '../theme/app_theme.dart';
@@ -214,7 +215,7 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                       FilledButton.icon(
                         onPressed: widget.onReconnect,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Переподключить  ⏎'),
+                        label: Text(DesktopEnv.isDesktop ? 'Переподключить  ⏎' : 'Переподключить'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: () => _runDiag(DiagKind.ping),
@@ -244,7 +245,7 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                         ),
                       TextButton(
                         onPressed: widget.onDismiss,
-                        child: const Text('Показать терминал  Esc'),
+                        child: Text(DesktopEnv.isDesktop ? 'Показать терминал  Esc' : 'Показать терминал'),
                       ),
                     ],
                   ),

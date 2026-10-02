@@ -9,6 +9,7 @@ import '../../domain/models/session_tab.dart';
 import '../../domain/services/external_colors_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
+import '../../infra/platform/desktop_env.dart';
 import '../shell/ui_state.dart';
 import '../sftp/sftp_pane.dart';
 import '../theme/app_theme.dart';
@@ -27,7 +28,7 @@ class SessionView extends ConsumerStatefulWidget {
   ConsumerState<SessionView> createState() => _SessionViewState();
 }
 
-class _SessionViewState extends ConsumerState<SessionView> {
+class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingObserver {
   final _controller = TerminalController();
   final _focus = FocusNode(debugLabel: 'terminal');
   double _paneWidth = 420;
@@ -36,7 +37,21 @@ class _SessionViewState extends ConsumerState<SessionView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onSelectionChanged);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.active) {
+      final session = ref.read(tabsProvider.notifier).sessionOf(widget.tab.id);
+      // Если соединение оборвалось, пока приложение было свёрнуто — переподключаем сразу при возврате
+      if (session != null &&
+          widget.tab.status == SessionStatus.lost &&
+          session.droppedAfterReady) {
+        _reconnect();
+      }
+    }
   }
 
   @override
@@ -56,6 +71,7 @@ class _SessionViewState extends ConsumerState<SessionView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.removeListener(_onSelectionChanged);
     _controller.dispose();
     _focus.dispose();
@@ -390,7 +406,7 @@ class _StatusBar extends StatelessWidget {
             ),
             onPressed: onToggleFiles,
             icon: Icon(filesOpen ? Icons.folder_open : Icons.folder_outlined, size: 14),
-            label: const Text('Файлы  Ctrl+Shift+E'),
+            label: Text(DesktopEnv.isDesktop ? 'Файлы  Ctrl+Shift+E' : 'Файлы'),
           ),
           if (tab.status != SessionStatus.connecting)
             TextButton.icon(
