@@ -72,6 +72,33 @@ class TerminalSession extends ChangeNotifier {
   /// Соединение оборвалось уже после успешного входа.
   bool droppedAfterReady = false;
 
+  /// Модификаторы для виртуальной клавиатуры (как в Termux).
+  bool ctrlModifier = false;
+  bool altModifier = false;
+  VoidCallback? onModifiersChanged;
+
+  void toggleCtrl() {
+    ctrlModifier = !ctrlModifier;
+    onModifiersChanged?.call();
+  }
+
+  void toggleAlt() {
+    altModifier = !altModifier;
+    onModifiersChanged?.call();
+  }
+
+  void resetModifiers() {
+    if (ctrlModifier || altModifier) {
+      ctrlModifier = false;
+      altModifier = false;
+      onModifiersChanged?.call();
+    }
+  }
+
+  void sendDirect(String text) {
+    _shell?.write(utf8.encode(text));
+  }
+
   void _log(String text, {bool debug = false, bool error = false}) {
     connLog.add(ConnLogEntry(text, debug: debug, error: error));
     if (connLog.length > 2000) connLog.removeRange(0, connLog.length - 2000);
@@ -116,7 +143,36 @@ class TerminalSession extends ChangeNotifier {
       );
       _shell = shell;
 
-      terminal.onOutput = (data) => shell.write(utf8.encode(data));
+      terminal.onOutput = (data) {
+        var output = data;
+        if (ctrlModifier && output.isNotEmpty) {
+          final buffer = StringBuffer();
+          for (var i = 0; i < output.length; i++) {
+            final code = output.codeUnitAt(i);
+            if (code >= 97 && code <= 122) {
+              // a-z -> 1-26 (Ctrl+A .. Ctrl+Z)
+              buffer.writeCharCode(code - 96);
+            } else if (code >= 65 && code <= 90) {
+              // A-Z -> 1-26 (Ctrl+A .. Ctrl+Z)
+              buffer.writeCharCode(code - 64);
+            } else if (code == 32) {
+              // space -> 0 (NUL)
+              buffer.writeCharCode(0);
+            } else {
+              buffer.writeCharCode(code);
+            }
+          }
+          output = buffer.toString();
+          ctrlModifier = false;
+          onModifiersChanged?.call();
+        }
+        if (altModifier && output.isNotEmpty) {
+          output = '\x1b$output';
+          altModifier = false;
+          onModifiersChanged?.call();
+        }
+        shell.write(utf8.encode(output));
+      };
       terminal.onResize = (w, h, _, _) {
         if (w >= 10 && h >= 2) shell.resize(w, h);
       };

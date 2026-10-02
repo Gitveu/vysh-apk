@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:xterm2/xterm.dart';
 
+import '../../domain/services/terminal_session.dart';
 import '../theme/app_theme.dart';
 
 /// Однострочная панель горячих клавиш терминала для мобильных устройств (как в Termux).
-/// Размещается над клавиатурой и содержит ESC, TAB, CTRL, ALT, стрелки и частые символы.
+/// Размещается над клавиатурой:
+/// - Основная строка: ESC, CTRL, ALT, стрелки ↑ ↓ ← →, ^C и кнопка вызова «Расширенной панели».
+/// - Расширенная панель: TAB, /, -, ~, |, Home, End, PgUp, PgDn, ^D, ^Z.
 class TerminalAccessoryBar extends StatefulWidget {
   const TerminalAccessoryBar({
     super.key,
-    required this.terminal,
+    required this.session,
     required this.focusNode,
   });
 
-  final Terminal terminal;
+  final TerminalSession session;
   final FocusNode focusNode;
 
   @override
@@ -21,49 +24,66 @@ class TerminalAccessoryBar extends StatefulWidget {
 }
 
 class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
-  bool _ctrlActive = false;
-  bool _altActive = false;
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.session.onModifiersChanged = _onModifiersChanged;
+  }
+
+  @override
+  void didUpdateWidget(covariant TerminalAccessoryBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session != widget.session) {
+      oldWidget.session.onModifiersChanged = null;
+      widget.session.onModifiersChanged = _onModifiersChanged;
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.session.onModifiersChanged == _onModifiersChanged) {
+      widget.session.onModifiersChanged = null;
+    }
+    super.dispose();
+  }
+
+  void _onModifiersChanged() {
+    if (mounted) setState(() {});
+  }
 
   void _sendKey(TerminalKey key) {
     HapticFeedback.lightImpact();
-    widget.terminal.keyInput(
+    widget.session.terminal.keyInput(
       key,
-      ctrl: _ctrlActive,
-      alt: _altActive,
+      ctrl: widget.session.ctrlModifier,
+      alt: widget.session.altModifier,
     );
-    if (_ctrlActive || _altActive) {
-      setState(() {
-        _ctrlActive = false;
-        _altActive = false;
-      });
-    }
+    widget.session.resetModifiers();
+    _refocus();
+  }
+
+  void _sendDirect(String text) {
+    HapticFeedback.lightImpact();
+    widget.session.sendDirect(text);
+    widget.session.resetModifiers();
     _refocus();
   }
 
   void _sendText(String text) {
     HapticFeedback.lightImpact();
-    if (_ctrlActive && text.length == 1) {
+    if (widget.session.ctrlModifier && text.length == 1) {
       final code = text.toUpperCase().codeUnitAt(0);
       if (code >= 64 && code <= 95) {
-        widget.terminal.textInput(String.fromCharCode(code - 64));
+        widget.session.sendDirect(String.fromCharCode(code - 64));
       } else {
-        widget.terminal.textInput(text);
+        widget.session.sendDirect(text);
       }
-      setState(() => _ctrlActive = false);
+      widget.session.resetModifiers();
     } else {
-      widget.terminal.textInput(text);
+      widget.session.terminal.textInput(text);
     }
-    if (_altActive) setState(() => _altActive = false);
-    _refocus();
-  }
-
-  void _sendCtrlSequence(String char) {
-    HapticFeedback.mediumImpact();
-    final code = char.toUpperCase().codeUnitAt(0);
-    if (code >= 64 && code <= 95) {
-      widget.terminal.textInput(String.fromCharCode(code - 64));
-    }
-    setState(() => _ctrlActive = false);
     _refocus();
   }
 
@@ -105,13 +125,13 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                 ),
               ),
               const Divider(height: 12),
-              _ctrlMenuItem(ctx, 'Ctrl+C', 'Прервать процесс (SIGINT)', () => _sendCtrlSequence('C')),
-              _ctrlMenuItem(ctx, 'Ctrl+D', 'Выход / Конец ввода (EOF)', () => _sendCtrlSequence('D')),
-              _ctrlMenuItem(ctx, 'Ctrl+Z', 'Приостановить в фон (SIGTSTP)', () => _sendCtrlSequence('Z')),
-              _ctrlMenuItem(ctx, 'Ctrl+L', 'Очистить экран', () => _sendCtrlSequence('L')),
-              _ctrlMenuItem(ctx, 'Ctrl+A', 'В начало строки', () => _sendCtrlSequence('A')),
-              _ctrlMenuItem(ctx, 'Ctrl+E', 'В конец строки', () => _sendCtrlSequence('E')),
-              _ctrlMenuItem(ctx, 'Ctrl+R', 'Поиск по истории команд', () => _sendCtrlSequence('R')),
+              _ctrlMenuItem(ctx, 'Ctrl+C', 'Прервать процесс (SIGINT)', () => _sendDirect('\x03')),
+              _ctrlMenuItem(ctx, 'Ctrl+D', 'Выход / Конец ввода (EOF)', () => _sendDirect('\x04')),
+              _ctrlMenuItem(ctx, 'Ctrl+Z', 'Приостановить в фон (SIGTSTP)', () => _sendDirect('\x1a')),
+              _ctrlMenuItem(ctx, 'Ctrl+L', 'Очистить экран', () => _sendDirect('\x0c')),
+              _ctrlMenuItem(ctx, 'Ctrl+A', 'В начало строки', () => _sendDirect('\x01')),
+              _ctrlMenuItem(ctx, 'Ctrl+E', 'В конец строки', () => _sendDirect('\x05')),
+              _ctrlMenuItem(ctx, 'Ctrl+R', 'Поиск по истории команд', () => _sendDirect('\x12')),
             ],
           ),
         ),
@@ -147,89 +167,160 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ctrlActive = widget.session.ctrlModifier;
+    final altActive = widget.session.altModifier;
 
     return Container(
-      height: 38,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         border: Border(
           top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35), width: 0.7),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _KeyChip(
-              label: 'ESC',
-              onTap: () => _sendKey(TerminalKey.escape),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Расширенная панель (скрыта по умолчанию, открывается по кнопке ...)
+          if (_isExpanded)
+            Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainer.withValues(alpha: 0.6),
+                border: Border(
+                  bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2), width: 0.7),
+                ),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _KeyChip(
+                      label: 'TAB',
+                      onTap: () => _sendKey(TerminalKey.tab),
+                    ),
+                    _KeyChip(
+                      label: '/',
+                      onTap: () => _sendText('/'),
+                    ),
+                    _KeyChip(
+                      label: '-',
+                      onTap: () => _sendText('-'),
+                    ),
+                    _KeyChip(
+                      label: '~',
+                      onTap: () => _sendText('~'),
+                    ),
+                    _KeyChip(
+                      label: '|',
+                      onTap: () => _sendText('|'),
+                    ),
+                    const _Divider(),
+                    _KeyChip(
+                      label: 'HOME',
+                      onTap: () => _sendKey(TerminalKey.home),
+                    ),
+                    _KeyChip(
+                      label: 'END',
+                      onTap: () => _sendKey(TerminalKey.end),
+                    ),
+                    _KeyChip(
+                      label: 'PGUP',
+                      onTap: () => _sendKey(TerminalKey.pageUp),
+                    ),
+                    _KeyChip(
+                      label: 'PGDN',
+                      onTap: () => _sendKey(TerminalKey.pageDown),
+                    ),
+                    const _Divider(),
+                    _KeyChip(
+                      label: '^D',
+                      tooltip: 'EOF / Выход',
+                      onTap: () => _sendDirect('\x04'),
+                    ),
+                    _KeyChip(
+                      label: '^Z',
+                      tooltip: 'Фон (SIGTSTP)',
+                      onTap: () => _sendDirect('\x1a'),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            _KeyChip(
-              label: 'TAB',
-              onTap: () => _sendKey(TerminalKey.tab),
+
+          // Основная однострочная панель: ESC, CTRL, ALT, стрелки, ^C и переключатель
+          SizedBox(
+            height: 38,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _KeyChip(
+                    label: 'ESC',
+                    onTap: () => _sendKey(TerminalKey.escape),
+                  ),
+                  _KeyChip(
+                    label: 'CTRL',
+                    active: ctrlActive,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      widget.session.toggleCtrl();
+                      _refocus();
+                    },
+                    onLongPress: () => _showCtrlMenu(context),
+                  ),
+                  _KeyChip(
+                    label: 'ALT',
+                    active: altActive,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      widget.session.toggleAlt();
+                      _refocus();
+                    },
+                  ),
+                  const _Divider(),
+                  _KeyChip(
+                    icon: Icons.arrow_upward,
+                    tooltip: 'Вверх',
+                    onTap: () => _sendKey(TerminalKey.arrowUp),
+                  ),
+                  _KeyChip(
+                    icon: Icons.arrow_downward,
+                    tooltip: 'Вниз',
+                    onTap: () => _sendKey(TerminalKey.arrowDown),
+                  ),
+                  _KeyChip(
+                    icon: Icons.arrow_back,
+                    tooltip: 'Влево',
+                    onTap: () => _sendKey(TerminalKey.arrowLeft),
+                  ),
+                  _KeyChip(
+                    icon: Icons.arrow_forward,
+                    tooltip: 'Вправо',
+                    onTap: () => _sendKey(TerminalKey.arrowRight),
+                  ),
+                  const _Divider(),
+                  // Кнопка переключения расширенной панели
+                  _KeyChip(
+                    icon: _isExpanded ? Icons.expand_more : Icons.more_horiz,
+                    tooltip: _isExpanded ? 'Скрыть расширенную панель' : 'Расширенная панель (Tab, /, -, ~)',
+                    active: _isExpanded,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _isExpanded = !_isExpanded);
+                      _refocus();
+                    },
+                  ),
+                ],
+              ),
             ),
-            _KeyChip(
-              label: 'CTRL',
-              active: _ctrlActive,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _ctrlActive = !_ctrlActive);
-                _refocus();
-              },
-              onLongPress: () => _showCtrlMenu(context),
-            ),
-            _KeyChip(
-              label: 'ALT',
-              active: _altActive,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _altActive = !_altActive);
-                _refocus();
-              },
-            ),
-            const _Divider(),
-            _KeyChip(
-              icon: Icons.arrow_upward,
-              tooltip: 'Вверх',
-              onTap: () => _sendKey(TerminalKey.arrowUp),
-            ),
-            _KeyChip(
-              icon: Icons.arrow_downward,
-              tooltip: 'Вниз',
-              onTap: () => _sendKey(TerminalKey.arrowDown),
-            ),
-            _KeyChip(
-              icon: Icons.arrow_back,
-              tooltip: 'Влево',
-              onTap: () => _sendKey(TerminalKey.arrowLeft),
-            ),
-            _KeyChip(
-              icon: Icons.arrow_forward,
-              tooltip: 'Вправо',
-              onTap: () => _sendKey(TerminalKey.arrowRight),
-            ),
-            const _Divider(),
-            _KeyChip(
-              label: '/',
-              onTap: () => _sendText('/'),
-            ),
-            _KeyChip(
-              label: '-',
-              onTap: () => _sendText('-'),
-            ),
-            _KeyChip(
-              label: '~',
-              onTap: () => _sendText('~'),
-            ),
-            _KeyChip(
-              label: '|',
-              onTap: () => _sendText('|'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

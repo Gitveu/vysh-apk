@@ -344,7 +344,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
         ),
         if (settings.showAccessoryBar && (!isCompact || !paneOpen))
           TerminalAccessoryBar(
-            terminal: session.terminal,
+            session: session,
             focusNode: _focus,
           ),
         _StatusBar(

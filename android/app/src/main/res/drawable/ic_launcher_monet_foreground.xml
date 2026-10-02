@@ -3,17 +3,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Chevron '>' -->
+    <!-- Left chevron '>' -->
     <path
-        android:pathData="M 37,40 L 51,54 L 37,68"
+        android:pathData="M 28,39 L 45,51 L 28,63"
         android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="9"
+        android:strokeWidth="8.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
-    <!-- Underscore '_' -->
+    <!-- Underscore mouth '_' -->
     <path
-        android:pathData="M 58,68 L 73,68"
+        android:pathData="M 47,66 L 61,66"
         android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="9"
+        android:strokeWidth="8.5"
         android:strokeLineCap="round" />
+    <!-- Right chevron '<' -->
+    <path
+        android:pathData="M 80,39 L 63,51 L 80,63"
+        android:strokeColor="@color/ic_launcher_monet_foreground"
+        android:strokeWidth="8.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

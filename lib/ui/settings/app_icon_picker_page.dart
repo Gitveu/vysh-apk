@@ -270,21 +270,28 @@ class _LogoPainter extends CustomPainter {
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.17
+      ..strokeWidth = size.width * 0.14
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    // Chevron '>'
-    final path = Path()
-      ..moveTo(size.width * 0.15, size.height * 0.22)
-      ..lineTo(size.width * 0.5, size.height * 0.5)
-      ..lineTo(size.width * 0.15, size.height * 0.78);
-    canvas.drawPath(path, stroke);
+    // Левый шеврон '>' (глаз)
+    final leftEye = Path()
+      ..moveTo(size.width * 0.14, size.height * 0.33)
+      ..lineTo(size.width * 0.38, size.height * 0.49)
+      ..lineTo(size.width * 0.14, size.height * 0.65);
+    canvas.drawPath(leftEye, stroke);
 
-    // Cursor line '_'
+    // Правый шеврон '<' (глаз)
+    final rightEye = Path()
+      ..moveTo(size.width * 0.86, size.height * 0.33)
+      ..lineTo(size.width * 0.62, size.height * 0.49)
+      ..lineTo(size.width * 0.86, size.height * 0.65);
+    canvas.drawPath(rightEye, stroke);
+
+    // Ротик '_'
     canvas.drawLine(
-      Offset(size.width * 0.62, size.height * 0.78),
-      Offset(size.width * 0.95, size.height * 0.78),
+      Offset(size.width * 0.41, size.height * 0.70),
+      Offset(size.width * 0.59, size.height * 0.70),
       stroke,
     );
   }
