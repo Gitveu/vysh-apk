@@ -2,11 +2,13 @@
   <!-- Outer Squircle with thick rounded border -->
   <rect x="38" y="38" width="436" height="436" rx="136" ry="136" fill="#CAB8E8" stroke="#463553" stroke-width="38" stroke-linejoin="round" />
 
-  <!-- CLI Terminal Prompt: Chevron '>' and Underscore Cursor '_' -->
-  <g fill="none" stroke="#463553" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Chevron '>' -->
-    <polyline points="170,196 230,256 170,316" />
-    <!-- Underscore Cursor '_' -->
-    <line x1="270" y1="316" x2="342" y2="316" />
+  <!-- Cute Kaomoji Face '>_<' -->
+  <g fill="none" stroke="#463553" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left Eye '>' -->
+    <polyline points="145,206 205,256 145,306" />
+    <!-- Mouth '_' -->
+    <line x1="230" y1="306" x2="282" y2="306" />
+    <!-- Right Eye '<' -->
+    <polyline points="367,206 307,256 367,306" />
   </g>
 </svg>

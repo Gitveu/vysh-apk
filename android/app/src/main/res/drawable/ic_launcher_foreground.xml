@@ -3,17 +3,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Chevron '>' -->
+    <!-- Left Eye '>' -->
     <path
-        android:pathData="M 37,40 L 51,54 L 37,68"
+        android:pathData="M 31,43 L 43,54 L 31,65"
         android:strokeColor="#463553"
-        android:strokeWidth="9"
+        android:strokeWidth="8.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
-    <!-- Underscore '_' -->
+    <!-- Mouth '_' -->
     <path
-        android:pathData="M 58,68 L 73,68"
+        android:pathData="M 48,65 L 60,65"
         android:strokeColor="#463553"
-        android:strokeWidth="9"
+        android:strokeWidth="8.5"
         android:strokeLineCap="round" />
+    <!-- Right Eye '<' -->
+    <path
+        android:pathData="M 77,43 L 65,54 L 77,65"
+        android:strokeColor="#463553"
+        android:strokeWidth="8.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>
