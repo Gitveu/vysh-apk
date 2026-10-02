@@ -1,26 +1,32 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Left chevron '>' -->
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Outer circle border (matching benchmark) -->
     <path
-        android:pathData="M 28,39 L 45,51 L 28,63"
+        android:pathData="M 256,20 A 236,236 0 1,0 256,492 A 236,236 0 1,0 256,20"
         android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="8.5"
+        android:strokeWidth="38" />
+    <!-- Cute Kaomoji Face '>_<' in exactly 512x512 from assets/icon.svg -->
+    <!-- Left Eye '>' -->
+    <path
+        android:pathData="M 145,206 L 205,256 L 145,306"
+        android:strokeColor="@color/ic_launcher_monet_foreground"
+        android:strokeWidth="40"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
-    <!-- Underscore mouth '_' -->
+    <!-- Mouth '_' -->
     <path
-        android:pathData="M 47,66 L 61,66"
+        android:pathData="M 230,306 L 282,306"
         android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="8.5"
+        android:strokeWidth="40"
         android:strokeLineCap="round" />
-    <!-- Right chevron '<' -->
+    <!-- Right Eye '<' -->
     <path
-        android:pathData="M 80,39 L 63,51 L 80,63"
+        android:pathData="M 367,206 L 307,256 L 367,306"
         android:strokeColor="@color/ic_launcher_monet_foreground"
-        android:strokeWidth="8.5"
+        android:strokeWidth="40"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 </vector>

@@ -48,7 +48,7 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Цвета основной иконки (как в iteration 7)
+    // Цвета эталонной иконки (итерация 7)
     const defaultBg = Color(0xFFCAB8E8);
     const defaultFg = Color(0xFF463553);
 
@@ -75,7 +75,7 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            // Большое превью (полноразмерное, один в один как на рабочем столе в итерации 7)
+            // Большое превью (полноразмерное, один в один как эталон 7)
             _IconGlyph(
               size: 96,
               bgColor: activeBg,
@@ -259,9 +259,7 @@ class _IconGlyph extends StatelessWidget {
   }
 }
 
-/// Точная математическая проекция вектора ic_launcher_foreground.xml на видимый круг маски Android
-/// В Android 8+ viewport = 108dp, а круг маски иконки имеет диаметр 72dp с центром в (54dp, 54dp).
-/// Проекция: dx = ((x - 54) / 72 + 0.5) * size, dy = ((y - 54) / 72 + 0.5) * size.
+/// Точная математическая проекция эталонной иконки (итерация 7 из assets/icon.svg и assets/icon.png)
 class _AdaptiveIconPainter extends CustomPainter {
   const _AdaptiveIconPainter({required this.color});
 
@@ -269,36 +267,47 @@ class _AdaptiveIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = size.width / 512.0;
+
+    // Внешняя граница круга
+    final borderPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 38.0 * scale;
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      236.0 * scale,
+      borderPaint,
+    );
+
+    // Лицо >_< в точности по координатам эталона assets/icon.svg:
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * (8.5 / 72.0)
+      ..strokeWidth = 40.0 * scale
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    double mapX(double x) => ((x - 54.0) / 72.0 + 0.5) * size.width;
-    double mapY(double y) => ((y - 54.0) / 72.0 + 0.5) * size.height;
-
-    // Левый шеврон '>' (глаз): M 28,39 L 45,51 L 28,63
+    // Левый глаз '>' : 145,206 -> 205,256 -> 145,306
     final leftEye = Path()
-      ..moveTo(mapX(28), mapY(39))
-      ..lineTo(mapX(45), mapY(51))
-      ..lineTo(mapX(28), mapY(63));
+      ..moveTo(145.0 * scale, 206.0 * scale)
+      ..lineTo(205.0 * scale, 256.0 * scale)
+      ..lineTo(145.0 * scale, 306.0 * scale);
     canvas.drawPath(leftEye, stroke);
 
-    // Правый шеврон '<' (глаз): M 80,39 L 63,51 L 80,63
-    final rightEye = Path()
-      ..moveTo(mapX(80), mapY(39))
-      ..lineTo(mapX(63), mapY(51))
-      ..lineTo(mapX(80), mapY(63));
-    canvas.drawPath(rightEye, stroke);
-
-    // Ротик '_' : M 47,66 L 61,66
+    // Ротик '_' : 230,306 -> 282,306
     canvas.drawLine(
-      Offset(mapX(47), mapY(66)),
-      Offset(mapX(61), mapY(66)),
+      Offset(230.0 * scale, 306.0 * scale),
+      Offset(282.0 * scale, 306.0 * scale),
       stroke,
     );
+
+    // Правый глаз '<' : 367,206 -> 307,256 -> 367,306
+    final rightEye = Path()
+      ..moveTo(367.0 * scale, 206.0 * scale)
+      ..lineTo(307.0 * scale, 256.0 * scale)
+      ..lineTo(367.0 * scale, 306.0 * scale);
+    canvas.drawPath(rightEye, stroke);
   }
 
   @override
