@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/host.dart';
 import '../../domain/ports/secret_store.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/ports_providers.dart';
+import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../../domain/services/terminal_session.dart' show expandHome;
 import '../../infra/platform/desktop_env.dart';
@@ -205,7 +207,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                 ?.copyWith(color: Theme.of(context).colorScheme.primary)),
       );
 
-  Widget _authFields() {
+  Widget _authFields(AppStrings strings) {
     switch (_auth) {
       case AuthMethod.password:
         return Column(
@@ -216,13 +218,17 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
               controller: _password,
               obscureText: _obscure,
               decoration: _dec(
-                'Пароль',
+                strings.passwordField,
                 icon: const Icon(Icons.lock_outline),
                 helper: _hasSavedPassword
-                    ? 'Пароль уже сохранён. Оставьте поле пустым, чтобы не менять'
-                    : 'Можно оставить пустым — спросим при подключении',
+                    ? (strings.isRu
+                        ? 'Пароль уже сохранён. Оставьте поле пустым, чтобы не менять'
+                        : 'Password already saved. Leave blank to keep unchanged')
+                    : (strings.isRu
+                        ? 'Можно оставить пустым — спросим при подключении'
+                        : 'Can be left empty — will prompt on connection'),
                 suffix: IconButton(
-                  tooltip: _obscure ? 'Показать' : 'Скрыть',
+                  tooltip: _obscure ? (strings.isRu ? 'Показать' : 'Show') : (strings.isRu ? 'Скрыть' : 'Hide'),
                   icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
@@ -233,9 +239,8 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
               controlAffinity: ListTileControlAffinity.leading,
               value: _rememberPassword,
               onChanged: (v) => setState(() => _rememberPassword = v ?? false),
-              title: const Text('Запомнить пароль'),
-              subtitle: const Text('В системном хранилище. Без галочки пароль '
-                  'используется только для текущего подключения'),
+              title: Text(strings.rememberPasswordCheckbox),
+              subtitle: Text(strings.rememberPasswordSub),
             ),
           ],
         );
@@ -244,22 +249,25 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
           key: const ValueKey('key'),
           controller: _keyPath,
           decoration: _dec(
-            'Приватный ключ',
+            strings.privateKeyField,
             hint: '~/.ssh/id_ed25519',
             icon: const Icon(Icons.vpn_key_outlined),
-            helper: 'Парольную фразу ключа спросим при подключении',
+            helper: strings.isRu
+                ? 'Парольную фразу ключа спросим при подключении'
+                : 'Key passphrase will be requested upon connection',
             suffix: IconButton(
-              tooltip: 'Выбрать файл',
+              tooltip: strings.selectKeyFile,
               icon: const Icon(Icons.folder_open_outlined),
               onPressed: _pickKey,
             ),
           ),
         );
       case AuthMethod.agent:
-        return const _Note(
-          'Попробуем стандартные ключи из ~/.ssh: id_ed25519, id_ecdsa, id_rsa '
-          '(без парольной фразы). ssh-agent и Pageant — позже.',
-          key: ValueKey('agent'),
+        return _Note(
+          strings.isRu
+              ? 'Попробуем стандартные ключи из ~/.ssh: id_ed25519, id_ecdsa, id_rsa (без парольной фразы).'
+              : 'Will attempt standard keys from ~/.ssh: id_ed25519, id_ecdsa, id_rsa (passphraseless).',
+          key: const ValueKey('agent'),
         );
     }
   }
@@ -268,6 +276,8 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
     final groups = ref.watch(hostGroupsProvider);
     final width = MediaQuery.sizeOf(context).width;
 
@@ -296,11 +306,15 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(_isEdit ? 'Изменить хост' : 'Новый хост',
-                            style: theme.textTheme.titleLarge),
+                        child: Text(
+                          _isEdit
+                              ? (widget.duplicate ? strings.duplicateHostTitle : strings.editHostTitle)
+                              : strings.newHostTitle,
+                          style: theme.textTheme.titleLarge,
+                        ),
                       ),
                       IconButton(
-                        tooltip: DesktopEnv.isDesktop ? 'Закрыть (Esc)' : 'Закрыть',
+                        tooltip: DesktopEnv.isDesktop ? '${strings.close} (Esc)' : strings.close,
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
                       ),
@@ -312,7 +326,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                     children: [
                       // ── Подключение ──
-                      _sectionTitle(context, 'Подключение'),
+                      _sectionTitle(context, strings.isRu ? 'Подключение' : 'Connection'),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -320,12 +334,14 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                             child: TextFormField(
                               controller: _address,
                               autofocus: !_isEdit,
-                              decoration: _dec('Адрес',
-                                  hint: '10.0.0.1, example.com или user@host:port',
-                                  icon: const Icon(Icons.public)),
+                              decoration: _dec(
+                                strings.addressField,
+                                hint: strings.isRu ? '10.0.0.1, example.com или user@host:port' : '10.0.0.1, example.com or user@host:port',
+                                icon: const Icon(Icons.public),
+                              ),
                               onChanged: _onAddressChanged,
                               validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? 'Укажите адрес' : null,
+                                  (v == null || v.trim().isEmpty) ? strings.requiredField : null,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -335,10 +351,10 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                               controller: _port,
                               keyboardType: TextInputType.number,
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              decoration: _dec('Порт'),
+                              decoration: _dec(strings.portField),
                               validator: (v) {
                                 final p = int.tryParse(v ?? '');
-                                return (p == null || p < 1 || p > 65535) ? '1–65535' : null;
+                                return (p == null || p < 1 || p > 65535) ? strings.invalidPort : null;
                               },
                             ),
                           ),
@@ -347,21 +363,21 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _user,
-                        decoration: _dec('Пользователь', icon: const Icon(Icons.person_outline)),
+                        decoration: _dec(strings.userField, icon: const Icon(Icons.person_outline)),
                         validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Укажите логин' : null,
+                            (v == null || v.trim().isEmpty) ? strings.requiredField : null,
                       ),
 
                       // ── Вход ──
-                      _sectionTitle(context, 'Вход'),
+                      _sectionTitle(context, strings.authMethod),
                       SegmentedButton<AuthMethod>(
-                        segments: const [
-                          ButtonSegment(value: AuthMethod.password, label: Text('Пароль'),
-                              icon: Icon(Icons.password)),
-                          ButtonSegment(value: AuthMethod.key, label: Text('Ключ'),
-                              icon: Icon(Icons.key)),
-                          ButtonSegment(value: AuthMethod.agent, label: Text('Авто'),
-                              icon: Icon(Icons.auto_awesome)),
+                        segments: [
+                          ButtonSegment(value: AuthMethod.password, label: Text(strings.authPassword),
+                              icon: const Icon(Icons.password)),
+                          ButtonSegment(value: AuthMethod.key, label: Text(strings.authKey),
+                              icon: const Icon(Icons.key)),
+                          ButtonSegment(value: AuthMethod.agent, label: Text(strings.isRu ? 'Авто' : 'Auto'),
+                              icon: const Icon(Icons.auto_awesome)),
                         ],
                         selected: {_auth},
                         onSelectionChanged: (s) => setState(() => _auth = s.first),
@@ -370,24 +386,29 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                       AnimatedSize(
                         duration: const Duration(milliseconds: 200),
                         alignment: Alignment.topCenter,
-                        child: _authFields(),
+                        child: _authFields(strings),
                       ),
 
                       // ── В списке ──
-                      _sectionTitle(context, 'Как показывать в списке'),
+                      _sectionTitle(context, strings.isRu ? 'Как показывать в списке' : 'List appearance'),
                       TextFormField(
                         controller: _label,
-                        decoration: _dec('Название',
-                            hint: _address.text.trim().isEmpty
-                                ? 'Например: роутер, web-prod'
-                                : 'По умолчанию — ${_address.text.trim()}',
-                            icon: const Icon(Icons.label_outline)),
+                        decoration: _dec(
+                          strings.labelField,
+                          hint: _address.text.trim().isEmpty
+                              ? strings.labelHint
+                              : '${strings.isRu ? "По умолчанию" : "Default"} — ${_address.text.trim()}',
+                          icon: const Icon(Icons.label_outline),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _group,
-                        decoration: _dec('Группа', hint: 'Например: prod, дом, клиенты',
-                            icon: const Icon(Icons.folder_outlined)),
+                        decoration: _dec(
+                          strings.groupField,
+                          hint: strings.groupHint,
+                          icon: const Icon(Icons.folder_outlined),
+                        ),
                         onChanged: (_) => setState(() {}),
                       ),
                       if (groups.isNotEmpty) ...[
@@ -419,7 +440,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                             child: Icon(Icons.dns_rounded, color: Color(_color), size: 20),
                           ),
                           const SizedBox(width: 12),
-                          Text('Цвет значка', style: theme.textTheme.bodyLarge),
+                          Text(strings.cardColor, style: theme.textTheme.bodyLarge),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -436,22 +457,22 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _sectionTitle(context, 'Поддержание связи (KeepAlive)'),
+                      _sectionTitle(context, strings.keepAliveGlobalTitle),
                       DropdownButtonFormField<int?>(
                         initialValue: _keepAliveSeconds,
                         decoration: _dec(
-                          'KeepAlive интервал',
-                          helper: 'Защита от разрыва SSH при неактивности или блокировке экрана',
+                          strings.keepAliveField,
+                          helper: strings.isRu ? 'Защита от разрыва SSH при неактивности или блокировке экрана' : 'Keeps SSH session alive during inactivity',
                           icon: const Icon(Icons.timer_outlined),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('По умолчанию из настроек (60 с)')),
-                          DropdownMenuItem(value: 0, child: Text('Отключён')),
-                          DropdownMenuItem(value: 15, child: Text('15 секунд')),
-                          DropdownMenuItem(value: 30, child: Text('30 секунд')),
-                          DropdownMenuItem(value: 60, child: Text('60 секунд (1 мин) — реком.')),
-                          DropdownMenuItem(value: 120, child: Text('120 секунд (2 мин)')),
-                          DropdownMenuItem(value: 300, child: Text('300 секунд (5 мин)')),
+                        items: [
+                          DropdownMenuItem(value: null, child: Text(strings.keepAliveDefault)),
+                          DropdownMenuItem(value: 0, child: Text(strings.keepAliveOff)),
+                          DropdownMenuItem(value: 15, child: Text(strings.keepAliveSecondsVal(15))),
+                          DropdownMenuItem(value: 30, child: Text(strings.keepAliveSecondsVal(30))),
+                          DropdownMenuItem(value: 60, child: Text(strings.keepAliveRecom)),
+                          DropdownMenuItem(value: 120, child: Text(strings.isRu ? '120 секунд (2 мин)' : '120 seconds (2 min)')),
+                          DropdownMenuItem(value: 300, child: Text(strings.isRu ? '300 секунд (5 мин)' : '300 seconds (5 min)')),
                         ],
                         onChanged: (v) => setState(() => _keepAliveSeconds = v),
                       ),
@@ -465,7 +486,7 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                     children: [
                       if (_isEdit)
                         IconButton(
-                          tooltip: 'Удалить хост',
+                          tooltip: strings.delete,
                           color: scheme.error,
                           onPressed: () {
                             ref.read(hostsProvider.notifier).remove(widget.host!.id);
@@ -479,13 +500,13 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                           message: 'Ctrl+Shift+Enter',
                           child: TextButton(
                             onPressed: _saving ? null : () => _save(connect: true),
-                            child: const Text('Сохранить и подключиться'),
+                            child: Text(strings.isRu ? 'Сохранить и подключиться' : 'Save & connect'),
                           ),
                         )
                       else
                         TextButton(
                           onPressed: _saving ? null : () => _save(connect: true),
-                          child: const Text('Сохранить и подключиться'),
+                          child: Text(strings.isRu ? 'Сохранить и подключиться' : 'Save & connect'),
                         ),
                       const SizedBox(width: 8),
                       if (DesktopEnv.isDesktop)
@@ -493,13 +514,13 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                           message: 'Ctrl+Enter',
                           child: FilledButton(
                             onPressed: _saving ? null : _save,
-                            child: const Text('Сохранить'),
+                            child: Text(strings.save),
                           ),
                         )
                       else
                         FilledButton(
                           onPressed: _saving ? null : _save,
-                          child: const Text('Сохранить'),
+                          child: Text(strings.save),
                         ),
                     ],
                   ),

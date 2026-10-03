@@ -29,7 +29,9 @@ class TermuxStrings {
   String get copy => isRussian ? 'Копировать' : 'Copy';
   String get paste => isRussian ? 'Вставить' : 'Paste';
   String get cut => isRussian ? 'Вырезать' : 'Cut';
-  String get selectAll => isRussian ? 'Выбрать всё' : 'Select all';
+  String get selectLine => isRussian ? 'Выбрать строку' : 'Select line';
+  String get selectAll => selectLine;
+  String get selectLineToast => isRussian ? 'Строка выбрана' : 'Line selected';
   String get share => isRussian ? 'Поделиться' : 'Share';
   String get reset => isRussian ? 'Сброс (^C)' : 'Reset (^C)';
   String get clear => isRussian ? 'Очистить (^L)' : 'Clear (^L)';
@@ -79,7 +81,7 @@ class TermuxFloatingMenu extends StatefulWidget {
     required this.onShare,
     required this.onReset,
     required this.onClear,
-    required this.onSftp,
+    this.onSftp,
     required this.onLog,
     required this.onReconnect,
     required this.onDismiss,
@@ -98,7 +100,7 @@ class TermuxFloatingMenu extends StatefulWidget {
   final VoidCallback onShare;
   final VoidCallback onReset;
   final VoidCallback onClear;
-  final VoidCallback onSftp;
+  final VoidCallback? onSftp;
   final VoidCallback onLog;
   final VoidCallback onReconnect;
   final VoidCallback onDismiss;
@@ -298,11 +300,6 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                                 icon: Icons.cleaning_services_rounded,
                                 label: strings.clear,
                                 onTap: widget.onClear,
-                              ),
-                              _SecondaryButton(
-                                icon: Icons.folder_outlined,
-                                label: strings.sftp,
-                                onTap: widget.onSftp,
                               ),
                               _SecondaryButton(
                                 icon: Icons.refresh_rounded,

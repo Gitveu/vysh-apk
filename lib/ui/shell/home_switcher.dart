@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/services/hosts_controller.dart';
+import '../../domain/services/settings_controller.dart';
 import 'ui_state.dart';
 
 /// Вкладки главной (M3 primary tabs): «Хосты» и «Настройки».
@@ -32,6 +34,8 @@ class _HomeTabsState extends ConsumerState<HomeTabs> with SingleTickerProviderSt
       if (_tabs.index != next) _tabs.animateTo(next);
     });
     final count = ref.watch(hostsProvider.select((h) => h.length));
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
     final scheme = Theme.of(context).colorScheme;
 
     Widget tab(IconData icon, String label, [String? badge]) => Tab(
@@ -61,8 +65,8 @@ class _HomeTabsState extends ConsumerState<HomeTabs> with SingleTickerProviderSt
       dividerColor: scheme.outlineVariant,
       onTap: ref.read(homeSectionProvider.notifier).select,
       tabs: [
-        tab(Icons.dns_outlined, 'Хосты', count > 0 ? '$count' : null),
-        tab(Icons.tune, 'Настройки'),
+        tab(Icons.dns_outlined, strings.hosts, count > 0 ? '$count' : null),
+        tab(Icons.tune, strings.settings),
       ],
     );
   }

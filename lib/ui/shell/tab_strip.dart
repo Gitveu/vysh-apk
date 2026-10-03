@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/session_tab.dart';
+import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../widgets/context_menu.dart';
@@ -18,6 +20,8 @@ class TabStrip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(tabsProvider);
     final ctrl = ref.read(tabsProvider.notifier);
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
     final scheme = Theme.of(context).colorScheme;
 
     final custom = ref.watch(customTitleBarProvider);
@@ -27,7 +31,7 @@ class TabStrip extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _HomeTab(selected: state.isHome, onTap: () => ctrl.activate(0)),
+          _HomeTab(selected: state.isHome, strings: strings, onTap: () => ctrl.activate(0)),
           const SizedBox(width: 4),
           Flexible(
             child: ReorderableListView.builder(
@@ -48,6 +52,7 @@ class TabStrip extends ConsumerWidget {
                       tab: tab,
                       index: i + 1,
                       selected: state.active == i + 1,
+                      strings: strings,
                       onTap: () => ctrl.activate(i + 1),
                       onClose: () => ctrl.close(tab.id),
                       onDuplicate: () => ctrl.duplicate(tab.id),
@@ -59,7 +64,7 @@ class TabStrip extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: DesktopEnv.isDesktop ? 'Новая вкладка (Ctrl+Shift+T)' : 'Новая вкладка',
+            tooltip: DesktopEnv.isDesktop ? strings.newTabDesktopTooltip : strings.newTabTooltip,
             iconSize: 20,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.add),
@@ -94,7 +99,7 @@ class TabStrip extends ConsumerWidget {
                 : Align(alignment: Alignment.centerLeft, child: tabs),
           ),
           IconButton(
-            tooltip: DesktopEnv.isDesktop ? 'Настройки (Ctrl+,)' : 'Настройки',
+            tooltip: DesktopEnv.isDesktop ? strings.settingsDesktopTooltip : strings.settingsTooltip,
             iconSize: 20,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.tune),
@@ -114,16 +119,17 @@ class TabStrip extends ConsumerWidget {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.selected, required this.onTap});
+  const _HomeTab({required this.selected, required this.strings, required this.onTap});
 
   final bool selected;
+  final AppStrings strings;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
-      message: 'Главная (Alt+1)',
+      message: strings.homeTooltip,
       child: _TabSurface(
         selected: selected,
         onTap: onTap,
@@ -154,6 +160,7 @@ class _SessionTabChip extends StatefulWidget {
     required this.tab,
     required this.index,
     required this.selected,
+    required this.strings,
     required this.onTap,
     required this.onClose,
     required this.onDuplicate,
@@ -163,6 +170,7 @@ class _SessionTabChip extends StatefulWidget {
   final SessionTab tab;
   final int index;
   final bool selected;
+  final AppStrings strings;
   final VoidCallback onTap;
   final VoidCallback onClose;
   final VoidCallback onDuplicate;
@@ -178,12 +186,13 @@ class _SessionTabChipState extends State<_SessionTabChip> {
   final _menu = GlobalKey<ContextMenuAreaState>();
 
   void _showMenu(Offset position) {
+    final s = widget.strings;
     _menu.currentState?.open(position, [
-      menuItem('Переподключить',
+      menuItem(s.reconnect,
           icon: Icons.refresh, shortcut: Keys.reconnect, onPressed: widget.onReconnect),
-      menuItem('Дублировать', icon: Icons.copy_all_outlined, onPressed: widget.onDuplicate),
+      menuItem(s.duplicate, icon: Icons.copy_all_outlined, onPressed: widget.onDuplicate),
       menuDivider(),
-      menuItem('Закрыть вкладку',
+      menuItem(s.closeTab,
           icon: Icons.close, shortcut: Keys.closeTab, onPressed: widget.onClose),
     ]);
   }

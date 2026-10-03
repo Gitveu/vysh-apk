@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/host.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/settings_controller.dart';
@@ -61,6 +62,8 @@ class _HostsPageState extends ConsumerState<HostsPage> {
   Widget build(BuildContext context) {
     final hosts = ref.watch(hostsProvider);
     final theme = Theme.of(context);
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
     final filtered = hosts.where(_matches).toList();
     final quick = filtered.isEmpty ? Host.tryParseQuick(_query) : null;
 
@@ -94,7 +97,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
                   child: SearchBar(
                     controller: _search,
                     focusNode: ref.watch(hostSearchFocusProvider),
-                    hintText: isCompact ? 'Поиск хостов...' : 'Поиск или user@host:port',
+                    hintText: isCompact ? strings.searchHostsHintMobile : strings.searchHostsHintDesktop,
                     elevation: const WidgetStatePropertyAll(0),
                     constraints: const BoxConstraints(minHeight: 44),
                     leading: const Icon(Icons.search),
@@ -123,23 +126,23 @@ class _HostsPageState extends ConsumerState<HostsPage> {
               if (isCompact)
                 IconButton.filled(
                   onPressed: () => showHostEditor(context),
-                  tooltip: 'Новый хост',
+                  tooltip: strings.newHost,
                   icon: const Icon(Icons.add),
                 )
               else
                 FilledButton.icon(
                   onPressed: () => showHostEditor(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Новый хост'),
+                  label: Text(strings.newHost),
                 ),
             ],
           ),
           SizedBox(height: isCompact ? 14 : 20),
           Expanded(
             child: hosts.isEmpty
-                ? _EmptyState(onAdd: () => showHostEditor(context))
+                ? _EmptyState(strings: strings, onAdd: () => showHostEditor(context))
                 : filtered.isEmpty
-                    ? _NoResults(query: _query, quick: quick, onQuick: _connectQuick)
+                    ? _NoResults(query: _query, quick: quick, strings: strings, onQuick: _connectQuick)
                     : CustomScrollView(
                         slivers: [
                           for (final g in groupNames) ...[
@@ -148,7 +151,7 @@ class _HostsPageState extends ConsumerState<HostsPage> {
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 4, bottom: 10),
                                   child: Text(
-                                    g.isEmpty ? 'Без группы' : g,
+                                    g.isEmpty ? strings.noGroup : g,
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       color: theme.colorScheme.primary,
                                     ),
@@ -179,8 +182,9 @@ class _HostsPageState extends ConsumerState<HostsPage> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
+  const _EmptyState({required this.strings, required this.onAdd});
 
+  final AppStrings strings;
   final VoidCallback onAdd;
 
   @override
@@ -201,19 +205,22 @@ class _EmptyState extends StatelessWidget {
                 color: theme.colorScheme.onPrimaryContainer),
           ),
           const SizedBox(height: 20),
-          Text('Пока нет ни одного хоста', style: theme.textTheme.titleLarge),
+          Text(strings.noHostsTitle, style: theme.textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text(
-            'Добавьте сервер по адресу и логину\nили введите user@host в поиске для быстрого подключения',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              strings.noHostsDesc,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
           ),
           const SizedBox(height: 20),
           FilledButton.tonalIcon(
             onPressed: onAdd,
             icon: const Icon(Icons.add),
-            label: const Text('Добавить хост'),
+            label: Text(strings.newHost),
           ),
         ],
       ),
@@ -222,10 +229,16 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _NoResults extends StatelessWidget {
-  const _NoResults({required this.query, required this.quick, required this.onQuick});
+  const _NoResults({
+    required this.query,
+    required this.quick,
+    required this.strings,
+    required this.onQuick,
+  });
 
   final String query;
   final Host? quick;
+  final AppStrings strings;
   final ValueChanged<Host> onQuick;
 
   @override
@@ -238,20 +251,30 @@ class _NoResults extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Ничего не найдено по «$query»',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text(
+              strings.isRu ? 'Ничего не найдено по «$query»' : 'No results for "$query"',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
             if (quick != null) ...[
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => onQuick(quick!),
                 icon: const Icon(Icons.bolt),
-                label: Text('Подключиться к ${quick!.displayAddress}'),
+                label: Text(
+                  strings.isRu
+                      ? 'Подключиться к ${quick!.displayAddress}'
+                      : 'Connect to ${quick!.displayAddress}',
+                ),
               ),
               const SizedBox(height: 6),
-              Text('Enter — подключиться без сохранения',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline)),
+              Text(
+                strings.isRu
+                    ? 'Enter — подключиться без сохранения'
+                    : 'Enter to connect without saving',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.outline),
+              ),
             ],
           ],
         ),

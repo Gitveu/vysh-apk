@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/host.dart';
 import '../../domain/ports/ssh_transport.dart';
 import '../../domain/services/hosts_controller.dart';
+import '../../domain/services/settings_controller.dart';
 import '../../domain/services/terminal_session.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/net_diag.dart';
@@ -72,7 +74,7 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
 
   String _logText({bool withDebug = true}) {
     final b = StringBuffer()
-      ..writeln('vysh — журнал подключения к ${_host.displayAddress}');
+      ..writeln('vysh — connection log for ${_host.displayAddress}');
     for (final e in widget.session.connLog) {
       if (e.debug && !withDebug) continue;
       final t = e.time;
@@ -82,59 +84,71 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
     if (_diagLines.isNotEmpty) {
       b
         ..writeln()
-        ..writeln('Диагностика (${_diagKind?.name}):')
+        ..writeln('Diagnostics (${_diagKind?.name}):')
         ..writeAll(_diagLines, '\n');
     }
     return b.toString();
   }
 
-  (IconData, String, String) _describe(SshFailure? f) {
+  (IconData, String, String) _describe(SshFailure? f, AppStrings strings) {
     if (widget.session.droppedAfterReady) {
       return (
         Icons.link_off,
-        'Соединение потеряно',
-        'Сервер перестал отвечать или сеть пропала. Проверьте связь и переподключитесь.',
+        strings.isRu ? 'Соединение потеряно' : 'Connection lost',
+        strings.isRu
+            ? 'Сервер перестал отвечать или сеть пропала. Проверьте связь и переподключитесь.'
+            : 'Server stopped responding or network was disconnected. Check connection and retry.',
       );
     }
     if (f == null) {
       return (
         Icons.receipt_long_outlined,
-        'Журнал подключения',
-        'Шаги последнего подключения и сетевая диагностика.',
+        strings.sessionLog,
+        strings.isRu
+            ? 'Шаги последнего подключения и сетевая диагностика.'
+            : 'Last connection log and network diagnostics.',
       );
     }
     return switch (f.kind) {
       SshFailureKind.network => (
           Icons.wifi_off_rounded,
-          'Не удалось подключиться',
-          'Проверьте адрес и порт, включён ли сервер, VPN и фаервол. '
-              'Пинг и трассировка ниже помогут понять, где теряется связь.',
+          strings.isRu ? 'Не удалось подключиться' : 'Failed to connect',
+          strings.isRu
+              ? 'Проверьте адрес и порт, включён ли сервер, VPN и фаервол.'
+              : 'Verify address and port, whether the server is running, VPN and firewall.',
         ),
       SshFailureKind.auth => (
           Icons.no_accounts_outlined,
-          'Ошибка входа',
-          'Сервер не принял логин, пароль или ключ. Проверьте данные хоста. '
-              'На многих серверах вход root по паролю запрещён (PermitRootLogin).',
+          strings.isRu ? 'Ошибка входа' : 'Authentication error',
+          strings.isRu
+              ? 'Сервер не принял логин, пароль или ключ. Проверьте данные хоста.'
+              : 'Server rejected credentials or key. Check host settings.',
         ),
       SshFailureKind.hostKey => (
           Icons.gpp_bad_outlined,
-          'Ключ сервера отклонён',
-          'Подключение остановлено, потому что ключ сервера не подтверждён.',
+          strings.isRu ? 'Ключ сервера отклонён' : 'Host key rejected',
+          strings.isRu
+              ? 'Подключение остановлено, потому что ключ сервера не подтверждён.'
+              : 'Connection halted because host key was not verified.',
         ),
       SshFailureKind.keyPassphrase || SshFailureKind.config => (
           Icons.key_off_outlined,
-          'Проблема с ключом',
-          'Проверьте путь к ключу и парольную фразу в настройках хоста.',
+          strings.isRu ? 'Проблема с ключом' : 'Key issue',
+          strings.isRu
+              ? 'Проверьте путь к ключу и парольную фразу в настройках хоста.'
+              : 'Check private key path and passphrase in host settings.',
         ),
       SshFailureKind.cancelled => (
           Icons.cancel_outlined,
-          'Подключение отменено',
-          'Вы отменили ввод пароля или подтверждение.',
+          strings.isRu ? 'Подключение отменено' : 'Connection cancelled',
+          strings.isRu
+              ? 'Вы отменили ввод пароля или подтверждение.'
+              : 'Password input or confirmation was cancelled.',
         ),
       SshFailureKind.other => (
           Icons.error_outline,
-          'Не удалось подключиться',
-          'Подробности — в журнале ниже.',
+          strings.isRu ? 'Не удалось подключиться' : 'Failed to connect',
+          strings.isRu ? 'Подробности — в журнале ниже.' : 'Details are in the log below.',
         ),
     };
   }
@@ -143,8 +157,10 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
     final failure = widget.session.lastFailure;
-    final (icon, title, hint) = _describe(failure);
+    final (icon, title, hint) = _describe(failure, strings);
     final entries = widget.session.connLog.where((e) => _verbose || !e.debug).toList();
 
     return Container(
@@ -215,22 +231,22 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                       FilledButton.icon(
                         onPressed: widget.onReconnect,
                         icon: const Icon(Icons.refresh),
-                        label: Text(DesktopEnv.isDesktop ? 'Переподключить  ⏎' : 'Переподключить'),
+                        label: Text(DesktopEnv.isDesktop ? '${strings.reconnect}  ⏎' : strings.reconnect),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: () => _runDiag(DiagKind.ping),
                         icon: const Icon(Icons.network_ping),
-                        label: const Text('Пинг'),
+                        label: Text(strings.isRu ? 'Пинг' : 'Ping'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: () => _runDiag(DiagKind.traceroute),
                         icon: const Icon(Icons.route_outlined),
-                        label: const Text('Трассировка'),
+                        label: Text(strings.isRu ? 'Трассировка' : 'Traceroute'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: () => _runDiag(DiagKind.port),
                         icon: const Icon(Icons.settings_ethernet),
-                        label: Text('Порт ${_host.port}'),
+                        label: Text(strings.isRu ? 'Порт ${_host.port}' : 'Port ${_host.port}'),
                       ),
                       OutlinedButton.icon(
                           onPressed: () {
@@ -241,11 +257,15 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                             showHostEditor(context, host: saved ?? _host);
                           },
                           icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Изменить хост'),
+                          label: Text(strings.isRu ? 'Изменить хост' : 'Edit host'),
                         ),
                       TextButton(
                         onPressed: widget.onDismiss,
-                        child: Text(DesktopEnv.isDesktop ? 'Показать терминал  Esc' : 'Показать терминал'),
+                        child: Text(
+                          DesktopEnv.isDesktop
+                              ? (strings.isRu ? 'Показать терминал  Esc' : 'Show terminal  Esc')
+                              : (strings.isRu ? 'Показать терминал' : 'Show terminal'),
+                        ),
                       ),
                     ],
                   ),
@@ -253,9 +273,9 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                     const SizedBox(height: 20),
                     _Panel(
                       title: switch (_diagKind!) {
-                        DiagKind.ping => 'Пинг ${_host.address}',
-                        DiagKind.traceroute => 'Трассировка до ${_host.address}',
-                        DiagKind.port => 'Проверка порта ${_host.address}:${_host.port}',
+                        DiagKind.ping => strings.isRu ? 'Пинг ${_host.address}' : 'Ping ${_host.address}',
+                        DiagKind.traceroute => strings.isRu ? 'Трассировка до ${_host.address}' : 'Traceroute to ${_host.address}',
+                        DiagKind.port => strings.isRu ? 'Проверка порта ${_host.address}:${_host.port}' : 'Port check ${_host.address}:${_host.port}',
                       },
                       trailing: _diagRunning
                           ? TextButton.icon(
@@ -265,33 +285,33 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
                                 height: 14,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               ),
-                              label: const Text('Остановить'),
+                              label: Text(strings.isRu ? 'Остановить' : 'Stop'),
                             )
                           : null,
                       child: SelectableText(
-                        _diagLines.isEmpty ? 'Запуск…' : _diagLines.join('\n'),
+                        _diagLines.isEmpty ? (strings.isRu ? 'Запуск…' : 'Running…') : _diagLines.join('\n'),
                         style: monoStyle(context, size: 12.5, color: scheme.onSurface),
                       ),
                     ),
                   ],
                   const SizedBox(height: 20),
                   _Panel(
-                    title: 'Журнал подключения',
+                    title: strings.sessionLog,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Подробно', style: theme.textTheme.labelMedium),
+                        Text(strings.isRu ? 'Подробно' : 'Verbose', style: theme.textTheme.labelMedium),
                         Switch(
                           value: _verbose,
                           onChanged: (v) => setState(() => _verbose = v),
                         ),
                         IconButton(
-                          tooltip: 'Скопировать журнал',
+                          tooltip: strings.isRu ? 'Скопировать журнал' : 'Copy log',
                           icon: const Icon(Icons.copy, size: 18),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: _logText()));
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Журнал скопирован')),
+                              SnackBar(content: Text(strings.isRu ? 'Журнал скопирован' : 'Log copied')),
                             );
                           },
                         ),

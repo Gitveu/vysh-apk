@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/host.dart';
 import '../../domain/services/hosts_controller.dart';
 import '../../domain/services/settings_controller.dart';
@@ -14,15 +15,15 @@ class HostCard extends ConsumerWidget {
 
   final Host host;
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, AppStrings strings) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить хост?'),
-        content: Text('«${host.title}» будет удалён из списка.'),
+        title: Text(strings.deleteHostTitle),
+        content: Text(strings.deleteHostDesc(host.title)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(strings.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(strings.delete)),
         ],
       ),
     );
@@ -34,13 +35,15 @@ class HostCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final accent = Color(host.color);
+    final lang = ref.watch(settingsProvider.select((s) => s.language));
+    final strings = AppStrings.of(context, lang);
 
     return ContextMenuArea(
       child: Builder(builder: (areaContext) => Card(
       child: InkWell(
         onTap: () => ref.read(tabsProvider.notifier).openHost(host),
         onSecondaryTapUp: (d) =>
-            ContextMenuArea.of(areaContext)?.open(d.globalPosition, _items(context, ref)),
+            ContextMenuArea.of(areaContext)?.open(d.globalPosition, _items(context, ref, strings)),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -74,10 +77,10 @@ class HostCard extends ConsumerWidget {
               ),
               if (ref.watch(settingsProvider.select((s) => s.pingHosts))) ...[
                 const SizedBox(width: 8),
-                _Reachability(host: host),
+                _Reachability(host: host, strings: strings),
               ],
               const SizedBox(width: 4),
-              MenuIconButton(tooltip: 'Действия', items: _items(context, ref)),
+              MenuIconButton(tooltip: strings.actions, items: _items(context, ref, strings)),
             ],
           ),
         ),
@@ -86,36 +89,43 @@ class HostCard extends ConsumerWidget {
     );
   }
 
-  List<Widget> _items(BuildContext context, WidgetRef ref) {
+  List<Widget> _items(BuildContext context, WidgetRef ref, AppStrings strings) {
     final scheme = Theme.of(context).colorScheme;
     return [
-      menuItem('Подключиться',
+      menuItem(strings.isRu ? 'Подключиться' : 'Connect',
           icon: Icons.play_arrow_rounded,
           onPressed: () => ref.read(tabsProvider.notifier).openHost(host)),
-      menuItem('Изменить',
+      menuItem(strings.edit,
           icon: Icons.edit_outlined, onPressed: () => showHostEditor(context, host: host)),
-      menuItem('Дублировать',
+      menuItem(strings.duplicate,
           icon: Icons.copy_all_outlined,
           onPressed: () => showHostEditor(context, host: host, duplicate: true)),
-      menuItem('Забыть пароль', icon: Icons.key_off_outlined, onPressed: () {
+      menuItem(strings.forgetPassword, icon: Icons.key_off_outlined, onPressed: () {
         ref.read(hostsProvider.notifier).forgetSecrets(host.id);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Сохранённый пароль для «${host.title}» удалён')),
+          SnackBar(
+            content: Text(
+              strings.isRu
+                  ? 'Сохранённый пароль для «${host.title}» удалён'
+                  : 'Saved password for «${host.title}» removed',
+            ),
+          ),
         );
       }),
       menuDivider(),
-      menuItem('Удалить',
+      menuItem(strings.delete,
           icon: Icons.delete_outline,
           color: scheme.error,
-          onPressed: () => _confirmDelete(context, ref)),
+          onPressed: () => _confirmDelete(context, ref, strings)),
     ];
   }
 }
 
 class _Reachability extends ConsumerWidget {
-  const _Reachability({required this.host});
+  const _Reachability({required this.host, required this.strings});
 
   final Host host;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -131,8 +141,8 @@ class _Reachability extends ConsumerWidget {
       error: (_, _) => const SizedBox.shrink(),
       data: (ms) => Tooltip(
         message: ms == null
-            ? 'Порт ${host.port} не отвечает'
-            : 'Порт ${host.port} доступен за $ms мс',
+            ? (strings.isRu ? 'Порт ${host.port} не отвечает' : 'Port ${host.port} is unreachable')
+            : (strings.isRu ? 'Порт ${host.port} доступен за $ms мс' : 'Port ${host.port} reachable in ${ms}ms'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(

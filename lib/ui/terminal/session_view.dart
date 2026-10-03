@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: implementation_imports
 import 'package:xterm2/src/ui/render.dart';
 import 'package:xterm2/xterm.dart';
 
@@ -199,6 +200,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     _terminal?.paste(text);
     _controller.clearSelection();
     _focus.requestFocus();
+    if (!mounted) return;
     final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
     _showToast(strings.pastedToast);
   }
@@ -255,18 +257,65 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     if (terminal == null) return;
 
     final lines = terminal.buffer.lines;
-    if (lines.length > 0) {
-      final lastIdx = lines.length - 1;
-      final lastLen = lines[lastIdx].length;
-      _controller.setSelection(
-        terminal.buffer.createAnchor(0, 0),
-        terminal.buffer.createAnchor(lastLen, lastIdx),
-        mode: SelectionMode.line,
-      );
-      _selectionIsEmptiness = false;
-      _showToast(strings.selectAll);
-      setState(() {});
+    if (lines.length == 0) return;
+
+    // Выбираем только одну строку полностью (logical line boundary)
+    final rt = _renderTerminal;
+    final touchPos = _touchStartLocal;
+    bool selected = false;
+
+    if (touchPos != null && rt != null) {
+      final cellOffset = rt.getCellOffset(touchPos);
+      final boundary = terminal.buffer.getLineBoundary(cellOffset);
+      if (boundary != null) {
+        _controller.setSelection(
+          terminal.buffer.createAnchorFromOffset(boundary.begin),
+          terminal.buffer.createAnchorFromOffset(boundary.end),
+          mode: SelectionMode.line,
+        );
+        selected = true;
+      }
     }
+
+    if (!selected) {
+      final currentSel = _controller.selection;
+      if (currentSel != null) {
+        final boundary = terminal.buffer.getLineBoundary(currentSel.begin);
+        if (boundary != null) {
+          _controller.setSelection(
+            terminal.buffer.createAnchorFromOffset(boundary.begin),
+            terminal.buffer.createAnchorFromOffset(boundary.end),
+            mode: SelectionMode.line,
+          );
+          selected = true;
+        }
+      }
+    }
+
+    if (!selected) {
+      final cursorY = terminal.buffer.absoluteCursorY.clamp(0, lines.length - 1);
+      final boundary = terminal.buffer.getLineBoundary(CellOffset(0, cursorY));
+      if (boundary != null) {
+        _controller.setSelection(
+          terminal.buffer.createAnchorFromOffset(boundary.begin),
+          terminal.buffer.createAnchorFromOffset(boundary.end),
+          mode: SelectionMode.line,
+        );
+        selected = true;
+      } else {
+        final lineLen = lines[cursorY].length;
+        _controller.setSelection(
+          terminal.buffer.createAnchor(0, cursorY),
+          terminal.buffer.createAnchor(lineLen, cursorY),
+          mode: SelectionMode.line,
+        );
+        selected = true;
+      }
+    }
+
+    _selectionIsEmptiness = false;
+    _showToast(strings.selectLineToast);
+    setState(() {});
   }
 
   void _share() {
@@ -528,10 +577,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
               onShare: _share,
               onReset: _reset,
               onClear: _clear,
-              onSftp: () {
-                _dismissTermuxMenu();
-                ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id);
-              },
               onLog: () {
                 _dismissTermuxMenu();
                 setState(() => _showLogManually = true);
@@ -593,6 +638,8 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
           TerminalAccessoryBar(
             session: session,
             focusNode: _focus,
+            onToggleFiles: () => ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id),
+            filesOpen: paneOpen,
           ),
         _StatusBar(
           tab: widget.tab,

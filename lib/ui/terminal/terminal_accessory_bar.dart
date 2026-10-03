@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:xterm2/xterm.dart';
 
+import '../../domain/models/app_strings.dart';
 import '../../domain/services/terminal_session.dart';
 import '../theme/app_theme.dart';
 
@@ -14,10 +15,14 @@ class TerminalAccessoryBar extends StatefulWidget {
     super.key,
     required this.session,
     required this.focusNode,
+    this.onToggleFiles,
+    this.filesOpen = false,
   });
 
   final TerminalSession session;
   final FocusNode focusNode;
+  final VoidCallback? onToggleFiles;
+  final bool filesOpen;
 
   @override
   State<TerminalAccessoryBar> createState() => _TerminalAccessoryBarState();
@@ -96,6 +101,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
   void _showCtrlMenu(BuildContext context) {
     HapticFeedback.selectionClick();
     final scheme = Theme.of(context).colorScheme;
+    final strings = AppStrings.of(context);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: scheme.surfaceContainerHigh,
@@ -120,18 +126,18 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Text(
-                  'Быстрые команды Ctrl',
+                  strings.ctrlQuickTitle,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),
               const Divider(height: 12),
-              _ctrlMenuItem(ctx, 'Ctrl+C', 'Прервать процесс (SIGINT)', () => _sendDirect('\x03')),
-              _ctrlMenuItem(ctx, 'Ctrl+D', 'Выход / Конец ввода (EOF)', () => _sendDirect('\x04')),
-              _ctrlMenuItem(ctx, 'Ctrl+Z', 'Приостановить в фон (SIGTSTP)', () => _sendDirect('\x1a')),
-              _ctrlMenuItem(ctx, 'Ctrl+L', 'Очистить экран', () => _sendDirect('\x0c')),
-              _ctrlMenuItem(ctx, 'Ctrl+A', 'В начало строки', () => _sendDirect('\x01')),
-              _ctrlMenuItem(ctx, 'Ctrl+E', 'В конец строки', () => _sendDirect('\x05')),
-              _ctrlMenuItem(ctx, 'Ctrl+R', 'Поиск по истории команд', () => _sendDirect('\x12')),
+              _ctrlMenuItem(ctx, 'Ctrl+C', strings.ctrlCSigint, () => _sendDirect('\x03')),
+              _ctrlMenuItem(ctx, 'Ctrl+D', strings.ctrlDEof, () => _sendDirect('\x04')),
+              _ctrlMenuItem(ctx, 'Ctrl+Z', strings.ctrlZSuspend, () => _sendDirect('\x1a')),
+              _ctrlMenuItem(ctx, 'Ctrl+L', strings.ctrlLClear, () => _sendDirect('\x0c')),
+              _ctrlMenuItem(ctx, 'Ctrl+A', strings.ctrlABeginning, () => _sendDirect('\x01')),
+              _ctrlMenuItem(ctx, 'Ctrl+E', strings.ctrlEEnd, () => _sendDirect('\x05')),
+              _ctrlMenuItem(ctx, 'Ctrl+R', strings.ctrlRSearch, () => _sendDirect('\x12')),
             ],
           ),
         ),
@@ -167,6 +173,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final strings = AppStrings.of(context);
     final ctrlActive = widget.session.ctrlModifier;
     final altActive = widget.session.altModifier;
 
@@ -242,9 +249,19 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     ),
                     _KeyChip(
                       label: '^Z',
-                      tooltip: 'Фон (SIGTSTP)',
+                      tooltip: strings.isRu ? 'Фон (SIGTSTP)' : 'Background (SIGTSTP)',
                       onTap: () => _sendDirect('\x1a'),
                     ),
+                    if (widget.onToggleFiles != null) ...[
+                      const _Divider(),
+                      _KeyChip(
+                        icon: widget.filesOpen ? Icons.terminal_rounded : Icons.folder_outlined,
+                        label: 'SFTP',
+                        tooltip: widget.filesOpen ? strings.console : strings.sftpPaneTitle,
+                        active: widget.filesOpen,
+                        onTap: widget.onToggleFiles!,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -286,29 +303,31 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                   const _Divider(),
                   _KeyChip(
                     icon: Icons.arrow_upward,
-                    tooltip: 'Вверх',
+                    tooltip: strings.isRu ? 'Вверх' : 'Up',
                     onTap: () => _sendKey(TerminalKey.arrowUp),
                   ),
                   _KeyChip(
                     icon: Icons.arrow_downward,
-                    tooltip: 'Вниз',
+                    tooltip: strings.isRu ? 'Вниз' : 'Down',
                     onTap: () => _sendKey(TerminalKey.arrowDown),
                   ),
                   _KeyChip(
                     icon: Icons.arrow_back,
-                    tooltip: 'Влево',
+                    tooltip: strings.isRu ? 'Влево' : 'Left',
                     onTap: () => _sendKey(TerminalKey.arrowLeft),
                   ),
                   _KeyChip(
                     icon: Icons.arrow_forward,
-                    tooltip: 'Вправо',
+                    tooltip: strings.isRu ? 'Вправо' : 'Right',
                     onTap: () => _sendKey(TerminalKey.arrowRight),
                   ),
                   const _Divider(),
                   // Кнопка переключения расширенной панели
                   _KeyChip(
                     icon: _isExpanded ? Icons.expand_more : Icons.more_horiz,
-                    tooltip: _isExpanded ? 'Скрыть расширенную панель' : 'Расширенная панель (Tab, /, -, ~)',
+                    tooltip: _isExpanded
+                        ? (strings.isRu ? 'Скрыть панель' : 'Hide panel')
+                        : (strings.isRu ? 'Расширенная панель (Tab, /, SFTP)' : 'Expanded panel (Tab, /, SFTP)'),
                     active: _isExpanded,
                     onTap: () {
                       HapticFeedback.selectionClick();
