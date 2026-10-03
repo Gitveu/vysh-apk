@@ -37,6 +37,8 @@ class _SessionViewState extends ConsumerState<SessionView>
   final _controller = TerminalController();
   final _focus = FocusNode(debugLabel: 'terminal');
   final _terminalViewKey = GlobalKey<TerminalViewState>();
+  final _terminalStackKey = GlobalKey();
+  final _scrollController = ScrollController();
 
   double _paneWidth = 420;
 
@@ -50,10 +52,10 @@ class _SessionViewState extends ConsumerState<SessionView>
   bool _isSelecting = false;
   bool _selectionIsEmptiness = false;
 
-  bool _draggingHandle = false;
+  bool _isDraggingHandle = false;
+  bool? _draggingStartHandle;
   CellOffset? _dragFixedCell;
-  Offset? _lastDragLocal;
-  bool? _draggingStart;
+  Offset? _dragTouchDeltaToTextPoint;
 
   Offset? _termuxMenuPosition;
 
@@ -63,6 +65,7 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onSelectionChanged);
+    _scrollController.addListener(_onScrollChanged);
   }
 
   @override
@@ -111,7 +114,9 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     _longPressTimer?.cancel();
     _controller.removeListener(_onSelectionChanged);
+    _scrollController.removeListener(_onScrollChanged);
 
+    _scrollController.dispose();
     _controller.dispose();
     _focus.dispose();
 
@@ -135,11 +140,21 @@ class _SessionViewState extends ConsumerState<SessionView>
       setState(() {});
     }
 
+    if (_isDraggingHandle) {
+      return;
+    }
+
     if (!ref.read(settingsProvider).copyOnSelect) {
       return;
     }
 
     _copySelection();
+  }
+
+  void _onScrollChanged() {
+    if (_controller.selection != null && mounted) {
+      setState(() {});
+    }
   }
 
   bool _copySelection() {
@@ -484,98 +499,228 @@ class _SessionViewState extends ConsumerState<SessionView>
     _dismissTermuxMenu();
   }
 
-  void _dragSelectionHandle(Offset globalPosition, {required bool start}) {
-    final renderTerminal = _renderTerminal;
+  void _onHandlePanStart(DragStartDetails details, {required bool start}) {
     final selection = _controller.selection;
-    final renderBox = _terminalViewKey.currentContext?.findRenderObject();
+    final renderTerminal = _renderTerminal;
+    final terminal = _terminal;
+    if (selection == null || renderTerminal == null || terminal == null) return;
+
+    _dismissTermuxMenu();
+
+    final range = selection.normalized;
+    _isDraggingHandle = true;
+    _draggingStartHandle = start;
+
+    _dragFixedCell = start ? range.end : range.begin;
+    final movingCell = start ? range.begin : range.end;
+
+    final cellOffset = renderTerminal.getOffset(movingCell);
+    final textPoint = cellOffset + Offset(0, renderTerminal.cellSize.height);
+
+    final touchInTerminal = renderTerminal.globalToLocal(details.globalPosition);
+    _dragTouchDeltaToTextPoint = touchInTerminal - textPoint;
+  }
+
+  void _onHandlePanUpdate(DragUpdateDetails details, {required bool start}) {
+    final renderTerminal = _renderTerminal;
+    final terminal = _terminal;
+    final fixedCell = _dragFixedCell;
+    final delta = _dragTouchDeltaToTextPoint;
 
     if (renderTerminal == null ||
-        selection == null ||
-        renderBox is! RenderBox) {
+        terminal == null ||
+        fixedCell == null ||
+        delta == null ||
+        !_isDraggingHandle ||
+        _draggingStartHandle != start) {
       return;
     }
 
-    final local = renderBox.globalToLocal(globalPosition);
-    final fixedCell = _dragFixedCell;
-
-    if (fixedCell == null || _draggingStart != start || !_draggingHandle) {
-      return;
+    final stackBox =
+        _terminalStackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (stackBox != null && _scrollController.hasClients) {
+      final localInStack = stackBox.globalToLocal(details.globalPosition);
+      if (localInStack.dy < 40 && _scrollController.offset > 0) {
+        _scrollController.jumpTo((_scrollController.offset - 20)
+            .clamp(0.0, _scrollController.position.maxScrollExtent));
+      } else if (localInStack.dy > stackBox.size.height - 40 &&
+          _scrollController.offset < _scrollController.position.maxScrollExtent) {
+        _scrollController.jumpTo((_scrollController.offset + 20)
+            .clamp(0.0, _scrollController.position.maxScrollExtent));
+      }
     }
 
-    final movingCell = renderTerminal.getCellOffset(local);
-    final movingOffset = renderTerminal.getOffset(movingCell);
-    final fixedOffset = renderTerminal.getOffset(fixedCell);
+    final touchInTerminal = renderTerminal.globalToLocal(details.globalPosition);
+    final targetPointInTerminal = touchInTerminal - delta;
+
+    final cell = renderTerminal.cellSize;
+    final samplePoint = Offset(
+      targetPointInTerminal.dx,
+      targetPointInTerminal.dy - cell.height * 0.5,
+    );
+
+    final rawCell = renderTerminal.getCellOffset(samplePoint);
+    final maxRow = terminal.buffer.lines.length - 1;
+    if (maxRow < 0) return;
+
+    final clampedRow = rawCell.y.clamp(0, maxRow);
+    final maxCol = terminal.viewWidth;
+    final clampedCol = rawCell.x.clamp(0, maxCol < 1 ? 0 : maxCol - 1);
+
+    final movingCell = CellOffset(clampedCol, clampedRow);
+    final buffer = terminal.buffer;
 
     if (start) {
-      renderTerminal.selectCharacters(movingOffset, fixedOffset);
+      if (movingCell.isBefore(fixedCell)) {
+        _controller.setSelection(
+          buffer.createAnchorFromOffset(movingCell),
+          buffer.createAnchorFromOffset(fixedCell),
+        );
+      } else {
+        final endCol = (movingCell.x + 1).clamp(0, maxCol);
+        _controller.setSelection(
+          buffer.createAnchorFromOffset(fixedCell),
+          buffer.createAnchor(endCol, movingCell.y),
+        );
+      }
     } else {
-      renderTerminal.selectCharacters(fixedOffset, movingOffset);
+      if (movingCell.isAfterOrSame(fixedCell)) {
+        final endCol = (movingCell.x + 1).clamp(0, maxCol);
+        _controller.setSelection(
+          buffer.createAnchorFromOffset(fixedCell),
+          buffer.createAnchor(endCol, movingCell.y),
+        );
+      } else {
+        final endCol = (fixedCell.x + 1).clamp(0, maxCol);
+        _controller.setSelection(
+          buffer.createAnchorFromOffset(movingCell),
+          buffer.createAnchor(endCol, fixedCell.y),
+        );
+      }
+    }
+  }
+
+  void _onHandlePanEnd(DragEndDetails details, {required bool start}) {
+    _isDraggingHandle = false;
+    _draggingStartHandle = null;
+    _dragFixedCell = null;
+    _dragTouchDeltaToTextPoint = null;
+
+    if (ref.read(settingsProvider).copyOnSelect) {
+      _copySelection();
     }
 
-    _lastDragLocal = local;
-
-    if (mounted) {
-      setState(() {});
+    if (mounted && _controller.selection != null) {
+      final renderTerminal = _renderTerminal;
+      final stackBox =
+          _terminalStackKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderTerminal != null && stackBox != null) {
+        final range = _controller.selection!.normalized;
+        final endOffset = renderTerminal.getOffset(range.end);
+        final globalPos = renderTerminal.localToGlobal(endOffset);
+        final stackPos = stackBox.globalToLocal(globalPos);
+        _showTermuxMenu(stackPos);
+      }
     }
+  }
+
+  void _onHandlePanCancel({required bool start}) {
+    _isDraggingHandle = false;
+    _draggingStartHandle = null;
+    _dragFixedCell = null;
+    _dragTouchDeltaToTextPoint = null;
   }
 
   Widget _selectionHandle({required bool start}) {
     final renderTerminal = _renderTerminal;
     final selection = _controller.selection;
-    if (renderTerminal == null || selection == null) {
+    final terminal = _terminal;
+    if (renderTerminal == null || selection == null || terminal == null) {
+      return const SizedBox.shrink();
+    }
+
+    final stackBox =
+        _terminalStackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (stackBox == null || !stackBox.hasSize) {
       return const SizedBox.shrink();
     }
 
     final range = selection.normalized;
-    final anchor = start ? range.begin : range.end;
-    final offset = renderTerminal.getOffset(anchor);
+    final anchorCell = start ? range.begin : range.end;
+
+    if (anchorCell.y < 0 || anchorCell.y >= terminal.buffer.lines.length) {
+      return const SizedBox.shrink();
+    }
+
     final cell = renderTerminal.cellSize;
     final handleType = start
         ? TextSelectionHandleType.left
         : TextSelectionHandleType.right;
 
+    final cellOffsetLocal = renderTerminal.getOffset(anchorCell);
+    final textPointLocal = cellOffsetLocal + Offset(0, cell.height);
+
+    final textPointGlobal = renderTerminal.localToGlobal(textPointLocal);
+    final textPointInStack = stackBox.globalToLocal(textPointGlobal);
+
+    const double touchSize = 48.0;
+    const double handleSize = 22.0;
+    const double pad = (touchSize - handleSize) / 2.0;
+
+    final handleAnchor = MaterialTextSelectionControls().getHandleAnchor(
+      handleType,
+      cell.height,
+    );
+
+    final left = textPointInStack.dx - handleAnchor.dx - pad;
+    final top = textPointInStack.dy - handleAnchor.dy - pad;
+
     return Positioned(
-      left: offset.dx - 11,
-      top: offset.dy + cell.height - 1,
-      width: 22,
-      height: 22,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onPanUpdate: (details) =>
-            _dragSelectionHandle(details.globalPosition, start: start),
-        onPanStart: (_) {
-          final currentRange = _controller.selection?.normalized;
-          final currentRenderTerminal = _renderTerminal;
-          if (currentRange != null && currentRenderTerminal != null) {
-            _draggingHandle = true;
-            _draggingStart = start;
-            _dragFixedCell = currentRenderTerminal.getCellOffset(
-              currentRenderTerminal.getOffset(
-                start ? currentRange.end : currentRange.begin,
-              ),
-            );
-          }
+      key: ValueKey(start ? 'selection_handle_start' : 'selection_handle_end'),
+      left: left,
+      top: top,
+      width: touchSize,
+      height: touchSize,
+      child: RawGestureDetector(
+        behavior: HitTestBehavior.opaque,
+        gestures: <Type, GestureRecognizerFactory>{
+          PanGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
+            () => PanGestureRecognizer(
+              debugOwner: this,
+              supportedDevices: <PointerDeviceKind>{
+                PointerDeviceKind.touch,
+                PointerDeviceKind.stylus,
+                PointerDeviceKind.unknown,
+                PointerDeviceKind.mouse,
+              },
+            ),
+            (PanGestureRecognizer instance) {
+              instance
+                ..dragStartBehavior = DragStartBehavior.down
+                ..gestureSettings = const DeviceGestureSettings(touchSlop: 1.0)
+                ..onStart = (details) {
+                  _onHandlePanStart(details, start: start);
+                }
+                ..onUpdate = (details) {
+                  _onHandlePanUpdate(details, start: start);
+                }
+                ..onEnd = (details) {
+                  _onHandlePanEnd(details, start: start);
+                }
+                ..onCancel = () {
+                  _onHandlePanCancel(start: start);
+                };
+            },
+          ),
         },
-        onPanEnd: (_) {
-          final menuPosition = _lastDragLocal;
-          _draggingHandle = false;
-          _draggingStart = null;
-          _dragFixedCell = null;
-          _lastDragLocal = null;
-          if (menuPosition != null) {
-            _showTermuxMenu(menuPosition);
-          }
-        },
-        onPanCancel: () {
-          _draggingHandle = false;
-          _draggingStart = null;
-          _dragFixedCell = null;
-          _lastDragLocal = null;
-        },
-        child: MaterialTextSelectionControls().buildHandle(
-          context,
-          handleType,
-          cell.height,
+        child: Padding(
+          padding: const EdgeInsets.all(pad),
+          child: MaterialTextSelectionControls().buildHandle(
+            context,
+            handleType,
+            cell.height,
+          ),
         ),
       ),
     );
@@ -666,7 +811,12 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     if (_isSelecting) {
       _isSelecting = false;
-      _showTermuxMenu(event.localPosition);
+      final stackBox =
+          _terminalStackKey.currentContext?.findRenderObject() as RenderBox?;
+      final pos = stackBox != null
+          ? stackBox.globalToLocal(event.position)
+          : event.localPosition;
+      _showTermuxMenu(pos);
     }
   }
 
@@ -694,12 +844,18 @@ class _SessionViewState extends ConsumerState<SessionView>
         ? terminal.buffer.getText(wordBoundary, true)
         : '';
 
-    if (wordText.trim().isNotEmpty) {
+    if (wordText.trim().isNotEmpty && wordBoundary != null) {
       _selectionIsEmptiness = false;
-      renderTerminal.selectWord(startLocal);
+      _controller.setSelection(
+        terminal.buffer.createAnchorFromOffset(wordBoundary.begin),
+        terminal.buffer.createAnchorFromOffset(wordBoundary.end),
+      );
     } else {
       _selectionIsEmptiness = true;
-      renderTerminal.selectCharacters(startLocal);
+      _controller.setSelection(
+        terminal.buffer.createAnchor(cellOffset.x, cellOffset.y),
+        terminal.buffer.createAnchor(cellOffset.x + 1, cellOffset.y),
+      );
     }
 
     _isSelecting = true;
@@ -777,6 +933,7 @@ class _SessionViewState extends ConsumerState<SessionView>
         child: TerminalView(
           session.terminal,
           key: _terminalViewKey,
+          scrollController: _scrollController,
           controller: _controller,
           focusNode: _focus,
           autofocus: true,
@@ -802,12 +959,9 @@ class _SessionViewState extends ConsumerState<SessionView>
     final terminalArea = ColoredBox(
       color: terminalBackgroundFor(scheme, ext),
       child: Stack(
+        key: _terminalStackKey,
         children: [
           Positioned.fill(child: terminalView),
-          if (_controller.selection != null) ...[
-            _selectionHandle(start: true),
-            _selectionHandle(start: false),
-          ],
           if (showFailure)
             Positioned.fill(
               child: ConnectionFailureView(
@@ -854,6 +1008,11 @@ class _SessionViewState extends ConsumerState<SessionView>
               },
               onDismiss: _dismissTermuxMenu,
             ),
+          if (_controller.selection != null &&
+              !_controller.selection!.isCollapsed) ...[
+            _selectionHandle(start: true),
+            _selectionHandle(start: false),
+          ],
         ],
       ),
     );
