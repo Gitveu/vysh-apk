@@ -21,7 +21,8 @@ import 'known_hosts.dart';
 /// В состояниях lost/closed Enter в терминале переподключает.
 /// Строка журнала подключения.
 class ConnLogEntry {
-  ConnLogEntry(this.text, {this.debug = false, this.error = false}) : time = DateTime.now();
+  ConnLogEntry(this.text, {this.debug = false, this.error = false})
+    : time = DateTime.now();
   final DateTime time;
   final String text;
   final bool debug;
@@ -77,6 +78,9 @@ class TerminalSession extends ChangeNotifier {
   bool altModifier = false;
   VoidCallback? onModifiersChanged;
 
+  /// Текст текущего ввода пользователя без prompt и вывода shell.
+  String clientTypedCommand = '';
+
   void toggleCtrl() {
     ctrlModifier = !ctrlModifier;
     onModifiersChanged?.call();
@@ -96,7 +100,33 @@ class TerminalSession extends ChangeNotifier {
   }
 
   void sendDirect(String text) {
+    _updateClientTypedCommand(text);
     _shell?.write(utf8.encode(text));
+  }
+
+  void _updateClientTypedCommand(String text) {
+    for (var i = 0; i < text.length; i++) {
+      final code = text.codeUnitAt(i);
+
+      if (code == 13 || code == 10 || code == 3 || code == 21) {
+        clientTypedCommand = '';
+      } else if (code == 23) {
+        final trimmed = clientTypedCommand.trimRight();
+        final lastSpace = trimmed.lastIndexOf(' ');
+        clientTypedCommand = lastSpace >= 0
+            ? trimmed.substring(0, lastSpace + 1)
+            : '';
+      } else if (code == 127 || code == 8) {
+        if (clientTypedCommand.isNotEmpty) {
+          clientTypedCommand = clientTypedCommand.substring(
+            0,
+            clientTypedCommand.length - 1,
+          );
+        }
+      } else if (code >= 32) {
+        clientTypedCommand += String.fromCharCode(code);
+      }
+    }
   }
 
   void _log(String text, {bool debug = false, bool error = false}) {
@@ -144,6 +174,7 @@ class TerminalSession extends ChangeNotifier {
       _shell = shell;
 
       terminal.onOutput = (data) {
+        _updateClientTypedCommand(data);
         var output = data;
         if (ctrlModifier && output.isNotEmpty) {
           final buffer = StringBuffer();
@@ -231,15 +262,19 @@ class TerminalSession extends ChangeNotifier {
     if (transport == null || _status != SessionStatus.ready) {
       return Future.error(const SftpFailure('Нет соединения с сервером'));
     }
-    return _sftp ??= transport.openSftp().timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => throw const SftpFailure(
-          'Сервер не ответил по SFTP. Возможно, на нём нет sftp-server '
-          '(на OpenWrt: opkg install openssh-sftp-server).'),
-    ).catchError((Object e) {
-      _sftp = null;
-      throw e;
-    });
+    return _sftp ??= transport
+        .openSftp()
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw const SftpFailure(
+            'Сервер не ответил по SFTP. Возможно, на нём нет sftp-server '
+            '(на OpenWrt: opkg install openssh-sftp-server).',
+          ),
+        )
+        .catchError((Object e) {
+          _sftp = null;
+          throw e;
+        });
   }
 
   // ─── Подключение ──────────────────────────────────────────────────
@@ -273,44 +308,61 @@ class TerminalSession extends ChangeNotifier {
     }
 
     final keepSec = host.keepAliveSeconds ?? defaultKeepAliveSeconds;
-    final keepDuration = keepSec <= 0 ? Duration.zero : Duration(seconds: keepSec);
+    final keepDuration = keepSec <= 0
+        ? Duration.zero
+        : Duration(seconds: keepSec);
 
     for (var attempt = 0; attempt < 3; attempt++) {
       final retry = attempt > 0;
       try {
-        final transport = await connector.connect(SshConnectRequest(
-          address: host.address,
-          port: host.port,
-          username: host.username,
-          keys: keys,
-          keepAliveInterval: keepDuration,
-          password: host.auth == AuthMethod.password ? () => providePassword(retry) : null,
-          interactive: (name, instruction, list) async {
-            // Обычный «Password:» через keyboard-interactive — отвечаем паролем.
-            if (host.auth == AuthMethod.password && list.length == 1 && !list.first.echo) {
-              final p = await providePassword(retry);
-              return p == null ? null : [p];
-            }
-            final answers = await prompts.askInteractive(host, name, instruction, list);
-            if (answers == null) cancelled = true;
-            return answers;
-          },
-          verifyHostKey: _verifyHostKey,
-          onBanner: (b) => terminal.write('${b.replaceAll('\n', '\r\n')}\r\n'),
-          onLog: (line, debug) => _log(line, debug: debug),
-        ));
+        final transport = await connector.connect(
+          SshConnectRequest(
+            address: host.address,
+            port: host.port,
+            username: host.username,
+            keys: keys,
+            keepAliveInterval: keepDuration,
+            password: host.auth == AuthMethod.password
+                ? () => providePassword(retry)
+                : null,
+            interactive: (name, instruction, list) async {
+              // Обычный «Password:» через keyboard-interactive — отвечаем паролем.
+              if (host.auth == AuthMethod.password &&
+                  list.length == 1 &&
+                  !list.first.echo) {
+                final p = await providePassword(retry);
+                return p == null ? null : [p];
+              }
+              final answers = await prompts.askInteractive(
+                host,
+                name,
+                instruction,
+                list,
+              );
+              if (answers == null) cancelled = true;
+              return answers;
+            },
+            verifyHostKey: _verifyHostKey,
+            onBanner: (b) =>
+                terminal.write('${b.replaceAll('\n', '\r\n')}\r\n'),
+            onLog: (line, debug) => _log(line, debug: debug),
+          ),
+        );
 
         _memPassword = password;
         if (rememberPassword && password != null) {
           try {
             await secrets.write(passwordKey(host.id), password!);
           } catch (_) {
-            _info('Не удалось сохранить пароль: системное хранилище недоступно.');
+            _info(
+              'Не удалось сохранить пароль: системное хранилище недоступно.',
+            );
           }
         }
         return transport;
       } on SshFailure catch (e) {
-        if (cancelled) throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
+        if (cancelled)
+          throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
         switch (e.kind) {
           case SshFailureKind.auth when host.auth == AuthMethod.password:
             if (passwordFromStore) {
@@ -329,7 +381,10 @@ class TerminalSession extends ChangeNotifier {
         }
       }
     }
-    throw const SshFailure(SshFailureKind.auth, 'Не удалось войти после трёх попыток.');
+    throw const SshFailure(
+      SshFailureKind.auth,
+      'Не удалось войти после трёх попыток.',
+    );
   }
 
   Future<bool> _verifyHostKey(String type, String fingerprint) async {
@@ -352,23 +407,33 @@ class TerminalSession extends ChangeNotifier {
         return const [];
 
       case AuthMethod.key:
-        final raw = (host.keyPath?.trim().isNotEmpty ?? false) ? host.keyPath!.trim() : '~/.ssh/id_ed25519';
+        final raw = (host.keyPath?.trim().isNotEmpty ?? false)
+            ? host.keyPath!.trim()
+            : '~/.ssh/id_ed25519';
         final path = expandHome(raw);
         final file = File(path);
         if (!await file.exists()) {
-          throw SshFailure(SshFailureKind.config, 'Файл ключа не найден: $path');
+          throw SshFailure(
+            SshFailureKind.config,
+            'Файл ключа не найден: $path',
+          );
         }
         final pem = await file.readAsString();
         if (pem.contains('PuTTY-User-Key-File')) {
-          throw const SshFailure(SshFailureKind.config,
-              'Ключи PuTTY (.ppk) пока не поддерживаются — экспортируйте ключ в формат OpenSSH в PuTTYgen.');
+          throw const SshFailure(
+            SshFailureKind.config,
+            'Ключи PuTTY (.ppk) пока не поддерживаются — экспортируйте ключ в формат OpenSSH в PuTTYgen.',
+          );
         }
         String? passphrase;
         if (connector.isKeyEncrypted(pem)) {
-          passphrase = retry ? null : await secrets.read(passphraseKey(host.id));
+          passphrase = retry
+              ? null
+              : await secrets.read(passphraseKey(host.id));
           if (passphrase == null) {
             final answer = await prompts.askPassphrase(host, raw, retry: retry);
-            if (answer == null) throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
+            if (answer == null)
+              throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
             passphrase = answer.value;
             if (answer.remember) {
               try {
@@ -390,8 +455,10 @@ class TerminalSession extends ChangeNotifier {
           result.add(SshKeySource(label: '~/.ssh/$name', pem: pem));
         }
         if (result.isEmpty) {
-          throw const SshFailure(SshFailureKind.config,
-              'В ~/.ssh не найдено незашифрованных ключей (id_ed25519, id_ecdsa, id_rsa).');
+          throw const SshFailure(
+            SshFailureKind.config,
+            'В ~/.ssh не найдено незашифрованных ключей (id_ed25519, id_ecdsa, id_rsa).',
+          );
         }
         return result;
     }
@@ -408,16 +475,21 @@ class TerminalSession extends ChangeNotifier {
     } else {
       _error('Соединение потеряно.');
       droppedAfterReady = true;
-      lastFailure = const SshFailure(SshFailureKind.network, 'Соединение с сервером потеряно');
+      lastFailure = const SshFailure(
+        SshFailureKind.network,
+        'Соединение с сервером потеряно',
+      );
       _setStatus(SessionStatus.lost);
     }
     _offerReconnect();
   }
 
   void _offerReconnect() {
-    _info(DesktopEnv.isDesktop
-        ? 'Нажмите Enter, чтобы переподключиться.'
-        : 'Нажмите «Переподключить», чтобы восстановить связь.');
+    _info(
+      DesktopEnv.isDesktop
+          ? 'Нажмите Enter, чтобы переподключиться.'
+          : 'Нажмите «Переподключить», чтобы восстановить связь.',
+    );
     terminal.onOutput = (data) {
       if (data.contains('\r') || data.contains('\n')) connect();
     };
