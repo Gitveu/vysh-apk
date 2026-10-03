@@ -454,8 +454,13 @@ class TerminalSession extends ChangeNotifier {
 /// `~/...` → домашняя папка (на Windows — %USERPROFILE%).
 String expandHome(String path) {
   if (!path.startsWith('~')) return path;
-  final env = Platform.environment;
-  final home = env['HOME'] ?? env['USERPROFILE'] ?? '';
-  final rest = path.substring(1).replaceAll('/', Platform.pathSeparator);
-  return '$home$rest';
+  if (kIsWeb) return path;
+  try {
+    final env = Platform.environment;
+    final home = env['HOME'] ?? env['USERPROFILE'] ?? '';
+    final rest = path.substring(1).replaceAll('/', Platform.pathSeparator);
+    return '$home$rest';
+  } catch (_) {
+    return path;
+  }
 }

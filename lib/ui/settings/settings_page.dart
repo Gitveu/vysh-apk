@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/version.dart';
 import '../../domain/models/app_settings.dart';
-import '../../domain/models/app_strings.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/local_files.dart';
@@ -23,13 +23,13 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
     final ctrl = ref.read(settingsProvider.notifier);
-    final strings = AppStrings.of(context, s.language);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
       children: [
+
         Align(
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
@@ -39,27 +39,18 @@ class SettingsPage extends ConsumerWidget {
               children: [
                 _Section(
                   icon: Icons.palette_outlined,
-                  title: strings.appearanceSection,
+                  title: 'Внешний вид',
                   children: [
                     _Row(
-                      title: strings.themeTitle,
+                      title: 'Тема',
                       child: SegmentedButton<ThemeMode>(
-                        segments: [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: Text(strings.themeSystem),
-                            icon: const Icon(Icons.brightness_auto),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: Text(strings.themeLight),
-                            icon: const Icon(Icons.light_mode_outlined),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: Text(strings.themeDark),
-                            icon: const Icon(Icons.dark_mode_outlined),
-                          ),
+                        segments: const [
+                          ButtonSegment(value: ThemeMode.system, label: Text('Системная'),
+                              icon: Icon(Icons.brightness_auto)),
+                          ButtonSegment(value: ThemeMode.light, label: Text('Светлая'),
+                              icon: Icon(Icons.light_mode_outlined)),
+                          ButtonSegment(value: ThemeMode.dark, label: Text('Тёмная'),
+                              icon: Icon(Icons.dark_mode_outlined)),
                         ],
                         selected: {s.themeMode},
                         onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
@@ -71,7 +62,7 @@ class SettingsPage extends ConsumerWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.density_medium),
-                      title: Text(strings.compactUi),
+                      title: const Text('Компактный интерфейс'),
                       value: s.compact,
                       onChanged: ctrl.setCompact,
                     ),
@@ -79,10 +70,10 @@ class SettingsPage extends ConsumerWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.app_shortcut_outlined),
-                      title: Text(strings.appIconTitle),
+                      title: const Text('Иконка приложения'),
                       subtitle: Text(switch (s.appIcon) {
-                        'monet' => strings.appIconMonet,
-                        _ => strings.appIconDefault,
+                        'monet' => 'Monet (Динамическая)',
+                        _ => 'Основная (Оригинальная)',
                       }),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
@@ -91,38 +82,40 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                 ),
-                if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+                if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS))
                   _Section(
                     icon: Icons.web_asset,
-                    title: strings.windowSection,
+                    title: 'Окно',
                     children: const [TitleBarSection()],
                   ),
                 _Section(
                   icon: Icons.dns_outlined,
-                  title: strings.hostsSection,
+                  title: 'Хосты',
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.network_ping),
-                      title: Text(strings.pingHostsTitle),
-                      subtitle: Text(strings.pingHostsDesc),
+                      title: const Text('Проверять доступность хостов'),
+                      subtitle: const Text(
+                          'На главной — пинг порта SSH раз в 30 секунд. Выключите, чтобы не '
+                          'стучаться лишний раз на продовые серверы: индикатор скроется.'),
                       value: s.pingHosts,
                       onChanged: ctrl.setPingHosts,
                     ),
                     const SizedBox(height: 8),
                     _Row(
-                      title: strings.keepAliveGlobalTitle,
+                      title: 'SSH KeepAlive (поддержание связи)',
                       child: DropdownButton<int>(
                         value: s.keepAliveSeconds,
                         underline: const SizedBox.shrink(),
                         borderRadius: BorderRadius.circular(12),
-                        items: [
-                          DropdownMenuItem(value: 0, child: Text(strings.keepAliveOff)),
-                          DropdownMenuItem(value: 15, child: Text(strings.keepAliveSecondsVal(15))),
-                          DropdownMenuItem(value: 30, child: Text(strings.keepAliveSecondsVal(30))),
-                          DropdownMenuItem(value: 60, child: Text(strings.keepAliveRecom)),
-                          DropdownMenuItem(value: 120, child: Text(strings.isRu ? '120 сек (2 мин)' : '120 sec (2 min)')),
-                          DropdownMenuItem(value: 300, child: Text(strings.isRu ? '300 сек (5 мин)' : '300 sec (5 min)')),
+                        items: const [
+                          DropdownMenuItem(value: 0, child: Text('Отключён')),
+                          DropdownMenuItem(value: 15, child: Text('15 сек')),
+                          DropdownMenuItem(value: 30, child: Text('30 сек')),
+                          DropdownMenuItem(value: 60, child: Text('60 сек (1 мин) — рекомендовано')),
+                          DropdownMenuItem(value: 120, child: Text('120 сек (2 мин)')),
+                          DropdownMenuItem(value: 300, child: Text('300 сек (5 мин)')),
                         ],
                         onChanged: (v) => v != null ? ctrl.setKeepAliveSeconds(v) : null,
                       ),
@@ -131,10 +124,10 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 _Section(
                   icon: Icons.terminal,
-                  title: strings.terminalSection,
+                  title: 'Терминал',
                   children: [
                     _Row(
-                      title: strings.fontSizeTitle,
+                      title: 'Размер шрифта',
                       child: SizedBox(
                         width: 320,
                         child: Row(
@@ -166,7 +159,7 @@ class SettingsPage extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'root@server:~\$ htop   # font preview',
+                        'root@server:~\$ htop   # пример шрифта',
                         style: monoStyle(context,
                             size: s.terminalFontSize, color: scheme.onSurface),
                       ),
@@ -175,10 +168,10 @@ class SettingsPage extends ConsumerWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.content_copy),
-                      title: Text(strings.copyOnSelectTitle),
+                      title: const Text('Копировать при выделении'),
                       subtitle: Text(DesktopEnv.isDesktop
-                          ? strings.copyOnSelectDesktopDesc
-                          : strings.copyOnSelectMobileDesc),
+                          ? 'Как в терминалах Linux. Вставка — Ctrl+Shift+V'
+                          : 'Автоматически копировать выделенный текст'),
                       value: s.copyOnSelect,
                       onChanged: ctrl.setCopyOnSelect,
                     ),
@@ -186,55 +179,53 @@ class SettingsPage extends ConsumerWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.keyboard_outlined),
-                      title: Text(strings.accessoryBarTitle),
-                      subtitle: Text(strings.accessoryBarDesc),
+                      title: const Text('Панель горячих клавиш (Ctrl, Esc, стрелки)'),
+                      subtitle: const Text('Однострочная панель Termux над клавиатурой на смартфонах.'),
                       value: s.showAccessoryBar,
                       onChanged: ctrl.setShowAccessoryBar,
                     ),
                     const SizedBox(height: 8),
                     _Row(
-                      title: strings.languageTitle,
+                      title: 'Язык меню Termux',
                       child: DropdownButton<AppLanguage>(
                         value: s.language,
                         underline: const SizedBox.shrink(),
                         borderRadius: BorderRadius.circular(12),
-                        items: [
+                        items: const [
                           DropdownMenuItem(
                             value: AppLanguage.auto,
-                            child: Text(strings.languageAuto),
+                            child: Text('Авто (Android / система)'),
                           ),
                           DropdownMenuItem(
                             value: AppLanguage.ru,
-                            child: Text(strings.languageRu),
+                            child: Text('Русский (Russian)'),
                           ),
                           DropdownMenuItem(
                             value: AppLanguage.en,
-                            child: Text(strings.languageEn),
+                            child: Text('English'),
                           ),
                         ],
                         onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      DesktopEnv.isMobile ? strings.rightClickMobileTitle : strings.rightClickDesktopTitle,
-                      style: theme.textTheme.titleSmall,
-                    ),
+                    Text(DesktopEnv.isMobile ? 'Тап двумя пальцами' : 'Правый клик и тап двумя пальцами',
+                        style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     SegmentedButton<RightClickAction>(
-                      segments: [
+                      segments: const [
                         ButtonSegment(
                             value: RightClickAction.menu,
-                            icon: const Icon(Icons.menu_open),
-                            label: Text(strings.rightClickMenu)),
+                            icon: Icon(Icons.menu_open),
+                            label: Text('Меню')),
                         ButtonSegment(
                             value: RightClickAction.paste,
-                            icon: const Icon(Icons.content_paste),
-                            label: Text(strings.rightClickPaste)),
+                            icon: Icon(Icons.content_paste),
+                            label: Text('Вставка')),
                         ButtonSegment(
                             value: RightClickAction.smart,
-                            icon: const Icon(Icons.auto_awesome),
-                            label: Text(strings.rightClickSmart)),
+                            icon: Icon(Icons.auto_awesome),
+                            label: Text('Копировать / вставить')),
                       ],
                       selected: {s.rightClick},
                       onSelectionChanged: (v) => ctrl.setRightClick(v.first),
@@ -242,8 +233,8 @@ class SettingsPage extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Text(
                       DesktopEnv.isDesktop
-                          ? '${_rightClickHint(s.rightClick, strings)} ${strings.shiftRightClickNote}'
-                          : _rightClickHint(s.rightClick, strings),
+                          ? '${_rightClickHint(s.rightClick)} Shift + правый клик всегда открывает меню.'
+                          : _rightClickHint(s.rightClick),
                       style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                     if (DesktopEnv.isDesktop) ...[
@@ -251,16 +242,17 @@ class SettingsPage extends ConsumerWidget {
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         secondary: const Icon(Icons.keyboard),
-                        title: Text(strings.ctrlVPasteTitle),
-                        subtitle: Text(strings.ctrlVPasteDesc),
+                        title: const Text('Ctrl+V вставляет'),
+                        subtitle: const Text(
+                            'Как в Windows. Выключено — Ctrl+V уходит в терминал (нужно, например, в vim)'),
                         value: s.ctrlVPaste,
                         onChanged: ctrl.setCtrlVPaste,
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         secondary: const Icon(Icons.mouse_outlined),
-                        title: Text(strings.isRu ? 'Средняя кнопка мыши вставляет' : 'Middle click pastes'),
-                        subtitle: Text(strings.isRu ? 'Как в Linux' : 'Linux terminal style'),
+                        title: const Text('Средняя кнопка мыши вставляет'),
+                        subtitle: const Text('Как в Linux'),
                         value: s.middleClickPaste,
                         onChanged: ctrl.setMiddleClickPaste,
                       ),
@@ -268,8 +260,8 @@ class SettingsPage extends ConsumerWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.warning_amber_rounded),
-                      title: Text(strings.multilinePasteTitle),
-                      subtitle: Text(strings.multilinePasteDesc),
+                      title: const Text('Спрашивать перед вставкой нескольких строк'),
+                      subtitle: const Text('Защита от случайного запуска пачки команд на сервере'),
                       value: s.confirmMultilinePaste,
                       onChanged: ctrl.setConfirmMultilinePaste,
                     ),
@@ -277,14 +269,14 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 _Section(
                   icon: Icons.folder_outlined,
-                  title: strings.isRu ? 'Данные' : 'Data',
+                  title: 'Данные',
                   children: [
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(strings.downloadsDirTitle),
+                      title: const Text('Папка для скачанных файлов'),
                       subtitle: Text(
                           s.downloadsDir.isEmpty
-                              ? '${LocalFiles.defaultDownloadsDir()} (${strings.isRu ? 'по умолчанию' : 'default'})'
+                              ? '${LocalFiles.defaultDownloadsDir()} (по умолчанию)'
                               : s.downloadsDir,
                           style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
                       trailing: Wrap(
@@ -292,12 +284,12 @@ class SettingsPage extends ConsumerWidget {
                         children: [
                           if (s.downloadsDir.isNotEmpty)
                             IconButton(
-                              tooltip: strings.resetDefault,
+                              tooltip: 'По умолчанию',
                               icon: const Icon(Icons.restart_alt),
                               onPressed: () => ctrl.setDownloadsDir(''),
                             ),
                           IconButton(
-                            tooltip: strings.chooseFolder,
+                            tooltip: 'Выбрать папку',
                             icon: const Icon(Icons.folder_open),
                             onPressed: () async {
                               final dir = await getDirectoryPath();
@@ -309,16 +301,16 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(strings.isRu ? 'Папка с данными' : 'Config folder'),
+                      title: const Text('Папка с данными'),
                       subtitle: Text(AppPaths.configDir.path,
                           style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
                       trailing: IconButton(
-                        tooltip: strings.isRu ? 'Скопировать путь' : 'Copy path',
+                        tooltip: 'Скопировать путь',
                         icon: const Icon(Icons.copy),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: AppPaths.configDir.path));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(strings.isRu ? 'Путь скопирован' : 'Path copied')),
+                            const SnackBar(content: Text('Путь скопирован')),
                           );
                         },
                       ),
@@ -327,11 +319,11 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 _Section(
                   icon: Icons.info_outline,
-                  title: strings.aboutApp,
+                  title: 'О программе',
                   children: [
                     Text('vysh $appVersion', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 4),
-                    Text(strings.appDescription,
+                    Text('Минималистичный SSH-менеджер подключений для Windows и Linux.',
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: scheme.onSurfaceVariant)),
                   ],
@@ -400,8 +392,9 @@ class _Row extends StatelessWidget {
   }
 }
 
-String _rightClickHint(RightClickAction a, AppStrings strings) => switch (a) {
-      RightClickAction.menu => strings.rightClickHintMenu,
-      RightClickAction.paste => strings.rightClickHintPaste,
-      RightClickAction.smart => strings.rightClickHintSmart,
+String _rightClickHint(RightClickAction a) => switch (a) {
+      RightClickAction.menu => 'Открывает меню: копировать, вставить, файлы, журнал.',
+      RightClickAction.paste => 'Сразу вставляет из буфера, как в PuTTY.',
+      RightClickAction.smart =>
+        'Есть выделение — копирует, нет — вставляет, как в Windows Terminal.',
     };

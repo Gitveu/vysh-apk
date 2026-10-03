@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'app_paths.dart';
 
 /// Простое хранилище одного JSON-файла в папке конфигурации.
@@ -12,10 +14,14 @@ class JsonStore {
 
   final String fileName;
   Future<void> _queue = Future.value();
+  static final Map<String, Object?> _webStore = {};
 
   File get file => AppPaths.file(fileName);
 
   Object? readSync() {
+    if (kIsWeb) {
+      return _webStore[fileName];
+    }
     try {
       if (!file.existsSync()) return null;
       final text = file.readAsStringSync();
@@ -28,12 +34,18 @@ class JsonStore {
   }
 
   Future<void> write(Object? data) {
+    if (kIsWeb) {
+      _webStore[fileName] = data;
+      return Future.value();
+    }
     final text = const JsonEncoder.withIndent('  ').convert(data);
     _queue = _queue.then((_) async {
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(text, flush: true);
-      if (await file.exists()) await file.delete();
-      await tmp.rename(file.path);
+      try {
+        final tmp = File('${file.path}.tmp');
+        await tmp.writeAsString(text, flush: true);
+        if (await file.exists()) await file.delete();
+        await tmp.rename(file.path);
+      } catch (_) {}
     }).catchError((_) {});
     return _queue;
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -25,7 +26,7 @@ class VyshApp extends ConsumerWidget {
 
     // Переключили режим заголовка — применяем сразу, без перезапуска.
     ref.listen<bool>(customTitleBarProvider, (_, custom) {
-      if (Platform.isWindows || Platform.isLinux) {
+      if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
         windowManager.setTitleBarStyle(
           custom ? TitleBarStyle.hidden : TitleBarStyle.normal,
           windowButtonVisibility: !custom,
@@ -50,21 +51,10 @@ class VyshApp extends ConsumerWidget {
           roles: e?.roles[b],
         );
 
-    final Locale? appLocale = switch (s.language) {
-      AppLanguage.ru => const Locale('ru'),
-      AppLanguage.en => const Locale('en'),
-      AppLanguage.auto => null,
-    };
-
     return MaterialApp(
       title: 'vysh',
       navigatorKey: rootNavigatorKey,
       debugShowCheckedModeBanner: false,
-      locale: appLocale,
-      supportedLocales: const [
-        Locale('ru'),
-        Locale('en'),
-      ],
       themeMode: mode,
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/models/external_colors.dart';
@@ -12,8 +13,13 @@ class ColorSources {
   ColorSources._();
 
   static String get _home {
-    final env = Platform.environment;
-    return env['HOME'] ?? env['USERPROFILE'] ?? '';
+    if (kIsWeb) return '';
+    try {
+      final env = Platform.environment;
+      return env['HOME'] ?? env['USERPROFILE'] ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   static String _expand(String p) => p.startsWith('~') ? '$_home${p.substring(1)}' : p;
@@ -76,13 +82,23 @@ class ColorSources {
       ];
 
   static String get _stateHome {
-    final x = Platform.environment['XDG_STATE_HOME'];
-    return (x != null && x.isNotEmpty) ? x : '$_home/.local/state';
+    if (kIsWeb) return '';
+    try {
+      final x = Platform.environment['XDG_STATE_HOME'];
+      return (x != null && x.isNotEmpty) ? x : '$_home/.local/state';
+    } catch (_) {
+      return '';
+    }
   }
 
   static String get _cacheHome {
-    final x = Platform.environment['XDG_CACHE_HOME'];
-    return (x != null && x.isNotEmpty) ? x : '$_home/.cache';
+    if (kIsWeb) return '';
+    try {
+      final x = Platform.environment['XDG_CACHE_HOME'];
+      return (x != null && x.isNotEmpty) ? x : '$_home/.cache';
+    } catch (_) {
+      return '';
+    }
   }
 
   /// Первый найденный и разобранный файл из [dotsCandidates].

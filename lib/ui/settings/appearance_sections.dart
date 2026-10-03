@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -54,12 +55,12 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
           segments: [
             const ButtonSegment(
                 value: ColorSource.preset, icon: Icon(Icons.palette_outlined), label: Text('Свои')),
-            if (Platform.isWindows || Platform.isLinux)
+            if (!kIsWeb && (Platform.isWindows || Platform.isLinux))
               ButtonSegment(
                   value: ColorSource.system,
                   icon: const Icon(Icons.computer),
-                  label: Text(Platform.isWindows ? 'Акцент Windows' : 'Акцент системы')),
-            if (Platform.isLinux)
+                  label: Text(!kIsWeb && Platform.isWindows ? 'Акцент Windows' : 'Акцент системы')),
+            if (!kIsWeb && Platform.isLinux)
               const ButtonSegment(
                   value: ColorSource.dots, icon: Icon(Icons.wallpaper), label: Text('Из дотов')),
           ],
@@ -87,9 +88,9 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
             ColorSource.system => _Status(
                 ext: ext,
                 notFound: notFound,
-                hint: Platform.isWindows
+                hint: (!kIsWeb && Platform.isWindows)
                     ? 'Цвет берётся из «Параметры → Персонализация → Цвета». Меняется на лету.'
-                    : Platform.isLinux
+                    : (!kIsWeb && Platform.isLinux)
                         ? 'Нужен xdg-desktop-portal с поддержкой accent-color (GNOME 47+, KDE Plasma 6). '
                           'В тайлинговых WM акцента обычно нет — используйте «Из дотов».'
                         : 'Системный акцент поддерживается на десктопе.',
@@ -252,7 +253,7 @@ class TitleBarSection extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final custom = DesktopEnv.useCustomTitleBar(s.titleBarMode);
 
-    final autoHint = Platform.isWindows
+    final autoHint = (!kIsWeb && Platform.isWindows)
         ? 'Авто: свой заголовок с вкладками.'
         : DesktopEnv.isTiling
             ? 'Авто: обнаружен тайлинговый WM — заголовок не рисуем, окна раскладывает он.'

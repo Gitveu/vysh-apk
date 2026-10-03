@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../infra/platform/color_sources.dart';
@@ -38,9 +39,17 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
         notFound = false;
         return null;
       case ColorSource.system:
-        _reload(() => Platform.isWindows ? ColorSources.windowsAccent() : ColorSources.portalAccent());
+        if (kIsWeb) {
+          notFound = false;
+          return null;
+        }
+        _reload(() => (!kIsWeb && Platform.isWindows) ? ColorSources.windowsAccent() : ColorSources.portalAccent());
         _watchSystem();
       case ColorSource.dots:
+        if (kIsWeb) {
+          notFound = false;
+          return null;
+        }
         _reload(() => ColorSources.dots(dotsPath));
         _watchDots(dotsPath);
     }
@@ -76,7 +85,8 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
   }
 
   void _watchSystem() {
-    if (Platform.isWindows) {
+    if (kIsWeb) return;
+    if (!kIsWeb && Platform.isWindows) {
       // Смену акцента Windows ловим опросом реестра — дёшево, раз в 4 с.
       _timers.add(Timer.periodic(const Duration(seconds: 4), (_) => _load()));
       return;

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -117,7 +118,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       );
 
     // Linux без системной рамки: края окна тянем сами.
-    final resizable = Platform.isLinux && ref.watch(customTitleBarProvider);
+    final resizable = !kIsWeb && Platform.isLinux && ref.watch(customTitleBarProvider);
     return Scaffold(
       body: SafeArea(
         child: resizable ? DragToResizeArea(resizeEdgeSize: 6, child: body) : body,

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class MonetColors {
@@ -17,8 +18,9 @@ abstract final class AppIconManager {
   static const _channel = MethodChannel('com.vysh.vysh/app_icon');
 
   static Future<MonetColors?> getMonetColors() async {
-    if (!Platform.isAndroid) return null;
+    if (kIsWeb) return null;
     try {
+      if (!Platform.isAndroid) return null;
       final res = await _channel.invokeMapMethod<String, dynamic>('getMonetColors');
       if (res != null) {
         final accent = (res['accent'] as num?)?.toInt();
@@ -37,8 +39,9 @@ abstract final class AppIconManager {
   }
 
   static Future<void> setIcon(String icon) async {
-    if (!Platform.isAndroid) return;
+    if (kIsWeb) return;
     try {
+      if (!Platform.isAndroid) return;
       await _channel.invokeMethod<bool>('setIcon', {'icon': icon});
     } catch (_) {}
   }

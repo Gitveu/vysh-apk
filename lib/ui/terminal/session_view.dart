@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// ignore: implementation_imports
 import 'package:xterm2/src/ui/render.dart';
 import 'package:xterm2/xterm.dart';
 
@@ -200,7 +199,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     _terminal?.paste(text);
     _controller.clearSelection();
     _focus.requestFocus();
-    if (!mounted) return;
     final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
     _showToast(strings.pastedToast);
   }
@@ -259,7 +257,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     final lines = terminal.buffer.lines;
     if (lines.length == 0) return;
 
-    // Выбираем только одну строку полностью (logical line boundary)
+    // Выбираем только одну строчку полностью
     final rt = _renderTerminal;
     final touchPos = _touchStartLocal;
     bool selected = false;
@@ -301,7 +299,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
           terminal.buffer.createAnchorFromOffset(boundary.end),
           mode: SelectionMode.line,
         );
-        selected = true;
       } else {
         final lineLen = lines[cursorY].length;
         _controller.setSelection(
@@ -309,7 +306,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
           terminal.buffer.createAnchor(lineLen, cursorY),
           mode: SelectionMode.line,
         );
-        selected = true;
       }
     }
 
@@ -638,8 +634,6 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
           TerminalAccessoryBar(
             session: session,
             focusNode: _focus,
-            onToggleFiles: () => ref.read(sftpPaneProvider.notifier).toggle(widget.tab.id),
-            filesOpen: paneOpen,
           ),
         _StatusBar(
           tab: widget.tab,

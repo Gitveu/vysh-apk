@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
@@ -104,12 +105,12 @@ class WindowPlacement with WindowListener {
   // На Linux «…ed»-событий нет — слушаем непрерывные и откладываем сохранение.
   @override
   void onWindowMove() {
-    if (Platform.isLinux) _scheduleSave();
+    if (!kIsWeb && Platform.isLinux) _scheduleSave();
   }
 
   @override
   void onWindowResize() {
-    if (Platform.isLinux) _scheduleSave();
+    if (!kIsWeb && Platform.isLinux) _scheduleSave();
   }
 
   @override
