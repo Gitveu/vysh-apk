@@ -31,7 +31,11 @@ class TermuxStrings {
   String get cut => isRussian ? 'Вырезать' : 'Cut';
   String get selectLine => isRussian ? 'Выбрать строку' : 'Select line';
   String get selectAll => selectLine;
-  String get selectLineToast => isRussian ? 'Строка выбрана' : 'Line selected';
+  String get eraseLine => isRussian ? 'Стереть строку' : 'Erase line';
+  String get selectLineToast => isRussian ? 'Команда выбрана' : 'Command selected';
+  String get lineErasedToast => isRussian ? 'Строка команды очищена' : 'Command line erased';
+  String get commandEmptyToast => isRussian ? 'Команда еще не введена' : 'Command line is empty';
+  String get nothingToSelect => isRussian ? 'Строка пуста' : 'Line is empty';
   String get share => isRussian ? 'Поделиться' : 'Share';
   String get reset => isRussian ? 'Сброс (^C)' : 'Reset (^C)';
   String get clear => isRussian ? 'Очистить (^L)' : 'Clear (^L)';
@@ -41,7 +45,7 @@ class TermuxStrings {
   String get deselect => isRussian ? 'Снять выделение' : 'Deselect';
   String get more => isRussian ? 'Ещё' : 'More';
   String get terminal => isRussian ? 'Терминал' : 'Terminal';
-  String get emptyArea => isRussian ? 'Пустая область' : 'Empty area';
+  String get emptyArea => isRussian ? 'Терминал' : 'Terminal';
   String get selectedText => isRussian ? 'Текст' : 'Text';
 
   String charCount(int count) => isRussian ? '$count симв.' : '$count chars';
@@ -78,6 +82,7 @@ class TermuxFloatingMenu extends StatefulWidget {
     required this.onPaste,
     required this.onCut,
     required this.onSelectAll,
+    this.onErase,
     required this.onShare,
     required this.onReset,
     required this.onClear,
@@ -97,6 +102,7 @@ class TermuxFloatingMenu extends StatefulWidget {
   final VoidCallback onPaste;
   final VoidCallback onCut;
   final VoidCallback onSelectAll;
+  final VoidCallback? onErase;
   final VoidCallback onShare;
   final VoidCallback onReset;
   final VoidCallback onClear;
@@ -117,6 +123,7 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final strings = widget.strings;
+    final hasValidSelection = widget.hasSelection && widget.selectedCharCount > 0 && !widget.isEmptySpace;
 
     // Стилизация карточки меню Termux: тёмный контрастный фон, скругление, чёткая тень
     final surfaceColor = ElevationOverlay.applySurfaceTint(
@@ -196,22 +203,18 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                         child: Row(
                           children: [
                             Icon(
-                              widget.isEmptySpace
-                                  ? Icons.space_bar_rounded
-                                  : (widget.hasSelection
-                                      ? Icons.text_fields_rounded
-                                      : Icons.terminal_rounded),
+                              hasValidSelection
+                                  ? Icons.text_fields_rounded
+                                  : Icons.terminal_rounded,
                               size: 15,
                               color: scheme.primary,
                             ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                widget.isEmptySpace
-                                    ? strings.emptyArea
-                                    : (widget.hasSelection
-                                        ? '${strings.selectedText} (${strings.charCount(widget.selectedCharCount)})'
-                                        : strings.terminal),
+                                hasValidSelection
+                                    ? '${strings.selectedText} (${strings.charCount(widget.selectedCharCount)})'
+                                    : strings.terminal,
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: scheme.onSurface,
@@ -246,23 +249,25 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                               icon: Icons.copy_rounded,
                               label: strings.copy,
                               onTap: widget.onCopy,
-                              highlight: widget.hasSelection,
+                              enabled: hasValidSelection,
                             ),
                             _ActionButton(
                               icon: Icons.paste_rounded,
                               label: strings.paste,
                               onTap: widget.onPaste,
+                              enabled: true,
                             ),
                             _ActionButton(
                               icon: Icons.content_cut_rounded,
                               label: strings.cut,
                               onTap: widget.onCut,
-                              highlight: widget.hasSelection,
+                              enabled: hasValidSelection,
                             ),
                             _ActionButton(
                               icon: _expanded ? Icons.expand_less_rounded : Icons.more_horiz_rounded,
                               label: strings.more,
                               onTap: () => setState(() => _expanded = !_expanded),
+                              enabled: true,
                             ),
                           ],
                         ),
@@ -286,6 +291,12 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                                 label: strings.selectAll,
                                 onTap: widget.onSelectAll,
                               ),
+                              if (widget.onErase != null)
+                                _SecondaryButton(
+                                  icon: Icons.backspace_outlined,
+                                  label: strings.eraseLine,
+                                  onTap: widget.onErase!,
+                                ),
                               _SecondaryButton(
                                 icon: Icons.share_rounded,
                                 label: strings.share,
@@ -327,47 +338,50 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.highlight = false,
+    this.enabled = true,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool highlight;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: highlight ? scheme.primaryContainer.withValues(alpha: 0.4) : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: highlight ? scheme.primary : scheme.onSurface,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
-                color: highlight ? scheme.primary : scheme.onSurface,
+    final color = enabled ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.35);
+
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onTap();
+              }
+            : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: color,
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -132,6 +132,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
               ),
               const Divider(height: 12),
               _ctrlMenuItem(ctx, 'Ctrl+C', strings.ctrlCSigint, () => _sendDirect('\x03')),
+              _ctrlMenuItem(ctx, 'Ctrl+U', strings.isRu ? 'Стереть строку ввода' : 'Erase input line', () => _sendDirect('\x15')),
               _ctrlMenuItem(ctx, 'Ctrl+D', strings.ctrlDEof, () => _sendDirect('\x04')),
               _ctrlMenuItem(ctx, 'Ctrl+Z', strings.ctrlZSuspend, () => _sendDirect('\x1a')),
               _ctrlMenuItem(ctx, 'Ctrl+L', strings.ctrlLClear, () => _sendDirect('\x0c')),
@@ -242,6 +243,16 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                       onTap: () => _sendKey(TerminalKey.pageDown),
                     ),
                     const _Divider(),
+                    _KeyChip(
+                      label: '^U',
+                      tooltip: strings.isRu ? 'Стереть строку (^U)' : 'Erase line (^U)',
+                      onTap: () => _sendDirect('\x15'),
+                    ),
+                    _KeyChip(
+                      icon: Icons.backspace_outlined,
+                      tooltip: 'Backspace',
+                      onTap: () => _sendKey(TerminalKey.backspace),
+                    ),
                     _KeyChip(
                       label: '^D',
                       tooltip: 'EOF / Выход',

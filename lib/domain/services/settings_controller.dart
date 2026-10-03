@@ -36,6 +36,7 @@ class SettingsController extends Notifier<AppSettings> {
     _update(state.copyWith(appIcon: icon));
   }
   void setShowAccessoryBar(bool v) => _update(state.copyWith(showAccessoryBar: v));
+  void setIncognitoKeyboard(bool v) => _update(state.copyWith(incognitoKeyboard: v));
   void setLanguage(AppLanguage lang) => _update(state.copyWith(language: lang));
 
   void _update(AppSettings next) {

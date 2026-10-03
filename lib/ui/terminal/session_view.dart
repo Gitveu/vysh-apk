@@ -199,6 +199,7 @@ class _SessionViewState extends ConsumerState<SessionView> with WidgetsBindingOb
     _terminal?.paste(text);
     _controller.clearSelection();
     _focus.requestFocus();
+    if (!mounted) return;
     final strings = TermuxStrings.of(context, ref.read(settingsProvider).language);
     _showToast(strings.pastedToast);
   }

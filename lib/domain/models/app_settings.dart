@@ -67,6 +67,7 @@ class AppSettings {
     this.keepAliveSeconds = 60,
     this.appIcon = 'default',
     this.showAccessoryBar = true,
+    this.incognitoKeyboard = false,
     this.language = AppLanguage.auto,
   });
 
@@ -75,6 +76,7 @@ class AppSettings {
   final bool compact;
   final double terminalFontSize;
   final bool copyOnSelect;
+  final bool incognitoKeyboard;
 
   /// Выбранная иконка приложения ('default', 'monet', 'dark', 'matrix').
   final String appIcon;
@@ -131,6 +133,7 @@ class AppSettings {
     int? keepAliveSeconds,
     String? appIcon,
     bool? showAccessoryBar,
+    bool? incognitoKeyboard,
     AppLanguage? language,
   }) =>
       AppSettings(
@@ -151,6 +154,7 @@ class AppSettings {
         keepAliveSeconds: keepAliveSeconds ?? this.keepAliveSeconds,
         appIcon: appIcon ?? this.appIcon,
         showAccessoryBar: showAccessoryBar ?? this.showAccessoryBar,
+        incognitoKeyboard: incognitoKeyboard ?? this.incognitoKeyboard,
         language: language ?? this.language,
       );
 
@@ -172,6 +176,7 @@ class AppSettings {
         'keepAliveSeconds': keepAliveSeconds,
         'appIcon': appIcon,
         'showAccessoryBar': showAccessoryBar,
+        'incognitoKeyboard': incognitoKeyboard,
         'language': language.name,
       };
 
@@ -206,6 +211,7 @@ class AppSettings {
         keepAliveSeconds: (json['keepAliveSeconds'] as num?)?.toInt() ?? 60,
         appIcon: json['appIcon'] as String? ?? 'default',
         showAccessoryBar: json['showAccessoryBar'] as bool? ?? true,
+        incognitoKeyboard: json['incognitoKeyboard'] as bool? ?? false,
         language: AppLanguage.values.firstWhere(
           (l) => l.name == json['language'],
           orElse: () => AppLanguage.auto,
