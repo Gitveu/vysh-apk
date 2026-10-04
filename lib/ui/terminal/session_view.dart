@@ -21,9 +21,9 @@ import '../theme/app_theme.dart';
 import 'connection_failure_view.dart';
 import 'terminal_accessory_bar.dart';
 import 'terminal_theme.dart';
-import 'termux_menu.dart';
+import 'selection_menu.dart';
 
-/// Вкладка сессии: терминал и контекстное меню Termux.
+/// Вкладка сессии: терминал и контекстное меню keyboard.
 class SessionView extends ConsumerStatefulWidget {
   const SessionView({super.key, required this.tab, required this.active});
 
@@ -50,6 +50,11 @@ class _SessionViewState extends ConsumerState<SessionView>
   Timer? _longPressTimer;
   Offset? _touchStartLocal;
   Offset? _touchStartGlobal;
+  final Set<int> _activePointerIds = <int>{};
+  double? _pinchBaseFontSize;
+  int? _lastPinchFontSize;
+  double _sessionFontSize = 14;
+  bool? _lastRememberFontSize;
 
   bool _isSelecting = false;
   bool _selectionIsEmptiness = false;
@@ -59,7 +64,7 @@ class _SessionViewState extends ConsumerState<SessionView>
   CellOffset? _dragFixedCell;
   Offset? _dragTouchDeltaToTextPoint;
 
-  Offset? _termuxMenuPosition;
+  Offset? _selectionMenuPosition;
 
   @override
   void initState() {
@@ -209,14 +214,14 @@ class _SessionViewState extends ConsumerState<SessionView>
   void _copy() {
     final selection = _controller.selection;
     final terminal = _terminal;
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
 
     if (selection == null || terminal == null) {
       _showToast(strings.nothingToCopy);
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -224,27 +229,27 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     if (text.isEmpty) {
       _showToast(strings.nothingToCopy);
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
     Clipboard.setData(ClipboardData(text: text));
 
     _controller.clearSelection();
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _cut() {
     final selection = _controller.selection;
     final terminal = _terminal;
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
 
     if (selection == null || terminal == null) {
       _showToast(strings.nothingToCopy);
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -252,7 +257,7 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     if (text.isEmpty) {
       _showToast(strings.nothingToCopy);
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -270,7 +275,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     }
 
     _controller.clearSelection();
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _eraseCurrentSelectionOrLine() {
@@ -279,7 +284,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     final terminal = session?.terminal;
 
     if (session == null || terminal == null) {
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -288,7 +293,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     // Ctrl+U очищает текущий пользовательский ввод shell.
     terminal.textInput('\x15');
 
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
 
     if (mounted) {
       setState(() {});
@@ -326,7 +331,7 @@ class _SessionViewState extends ConsumerState<SessionView>
       return;
     }
 
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
@@ -335,7 +340,7 @@ class _SessionViewState extends ConsumerState<SessionView>
   }
 
   Future<bool?> _confirmPaste(List<String> lines) {
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
@@ -400,7 +405,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     final terminal = session?.terminal;
 
     if (session == null || terminal == null) {
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -409,7 +414,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     if (clientTypedCommand.isEmpty) {
       _controller.clearSelection();
       _selectionIsEmptiness = false;
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -419,7 +424,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     if (lines.length == 0) {
       _controller.clearSelection();
       _selectionIsEmptiness = false;
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -436,7 +441,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     if (startX >= cursorX) {
       _controller.clearSelection();
       _selectionIsEmptiness = false;
-      _dismissTermuxMenu();
+      _dismissselectionMenu();
       return;
     }
 
@@ -446,14 +451,14 @@ class _SessionViewState extends ConsumerState<SessionView>
     );
 
     _selectionIsEmptiness = false;
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _share() {
     final selection = _controller.selection;
     final terminal = _terminal;
 
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
@@ -468,13 +473,13 @@ class _SessionViewState extends ConsumerState<SessionView>
       _showToast(strings.nothingToCopy);
     }
 
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _reset() {
     final session = ref.read(tabsProvider.notifier).sessionOf(widget.tab.id);
 
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
@@ -483,13 +488,13 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     _controller.clearSelection();
     _showToast(strings.resetToast);
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _clear() {
     final terminal = _terminal;
 
-    final strings = TermuxStrings.of(
+    final strings = SelectionStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
@@ -498,7 +503,7 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     _controller.clearSelection();
     _showToast(strings.clearToast);
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
   }
 
   void _onHandlePanStart(DragStartDetails details, {required bool start}) {
@@ -507,7 +512,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     final terminal = _terminal;
     if (selection == null || renderTerminal == null || terminal == null) return;
 
-    _dismissTermuxMenu();
+    _dismissselectionMenu();
 
     final range = selection.normalized;
     _isDraggingHandle = true;
@@ -634,7 +639,7 @@ class _SessionViewState extends ConsumerState<SessionView>
         final endOffset = renderTerminal.getOffset(range.end);
         final globalPos = renderTerminal.localToGlobal(endOffset);
         final stackPos = stackBox.globalToLocal(globalPos);
-        _showTermuxMenu(stackPos);
+        _showselectionMenu(stackPos);
       }
     }
   }
@@ -802,19 +807,19 @@ class _SessionViewState extends ConsumerState<SessionView>
     return Offset((startX + endX) / 2, math.min(startTop.dy, endTop.dy));
   }
 
-  void _showTermuxMenu(Offset position) {
+  void _showselectionMenu(Offset position) {
     setState(() {
-      _termuxMenuPosition = _selectionMenuAnchor() ?? position;
+      _selectionMenuPosition = _selectionMenuAnchor() ?? position;
     });
   }
 
-  void _dismissTermuxMenu() {
-    if (_termuxMenuPosition == null) {
+  void _dismissselectionMenu() {
+    if (_selectionMenuPosition == null) {
       return;
     }
 
     setState(() {
-      _termuxMenuPosition = null;
+      _selectionMenuPosition = null;
     });
 
     _focus.requestFocus();
@@ -825,7 +830,7 @@ class _SessionViewState extends ConsumerState<SessionView>
 
     if (HardwareKeyboard.instance.isShiftPressed ||
         action == RightClickAction.menu) {
-      _showTermuxMenu(localPosition ?? position);
+      _showselectionMenu(localPosition ?? position);
       return;
     }
 
@@ -838,7 +843,75 @@ class _SessionViewState extends ConsumerState<SessionView>
     _paste();
   }
 
+  double get _effectiveFontSize {
+    final remember = ref.read(settingsProvider).rememberTerminalFontSize;
+    if (_lastRememberFontSize != remember) {
+      _lastRememberFontSize = remember;
+      if (!remember) _sessionFontSize = 14;
+    }
+    return remember
+        ? ref.read(settingsProvider).terminalFontSize
+        : _sessionFontSize;
+  }
+
+  void _setFontSize(double value) {
+    final next = value.clamp(8, 32).toDouble();
+    if (ref.read(settingsProvider).rememberTerminalFontSize) {
+      ref.read(settingsProvider.notifier).setTerminalFontSize(next);
+    } else {
+      setState(() => _sessionFontSize = next);
+    }
+  }
+
+  void _cancelSinglePointerGesture() {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
+    _touchStartLocal = null;
+    _touchStartGlobal = null;
+    _isSelecting = false;
+    _pinchBaseFontSize = _effectiveFontSize;
+    _lastPinchFontSize = null;
+
+    if (_controller.selection != null) {
+      _controller.clearSelection();
+    }
+  }
+
+  void _onScaleStart(ScaleStartDetails details) {
+    if (_activePointerIds.length < 2) {
+      return;
+    }
+
+    _cancelSinglePointerGesture();
+    _pinchBaseFontSize = _effectiveFontSize;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    final base = _pinchBaseFontSize;
+    if (_activePointerIds.length < 2 || base == null) {
+      return;
+    }
+
+    final next = (base * details.scale).round().clamp(8, 32);
+    if (next == _lastPinchFontSize) {
+      return;
+    }
+
+    _lastPinchFontSize = next;
+    _setFontSize(next.toDouble());
+  }
+
+  void _onScaleEnd(ScaleEndDetails details) {
+    _pinchBaseFontSize = null;
+    _lastPinchFontSize = null;
+  }
+
   void _onPointerDown(PointerDownEvent event) {
+    _activePointerIds.add(event.pointer);
+    if (_activePointerIds.length >= 2) {
+      _cancelSinglePointerGesture();
+    }
+
     if (ref.read(settingsProvider).middleClickPaste &&
         (event.buttons & kMiddleMouseButton) != 0) {
       _paste();
@@ -863,6 +936,10 @@ class _SessionViewState extends ConsumerState<SessionView>
   }
 
   void _onPointerMove(PointerMoveEvent event) {
+    if (_activePointerIds.length >= 2) {
+      return;
+    }
+
     if (_longPressTimer?.isActive == true) {
       final startGlobal = _touchStartGlobal;
 
@@ -882,6 +959,12 @@ class _SessionViewState extends ConsumerState<SessionView>
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    _activePointerIds.remove(event.pointer);
+    if (_activePointerIds.isEmpty) {
+      _pinchBaseFontSize = null;
+      _lastPinchFontSize = null;
+    }
+
     _longPressTimer?.cancel();
     _longPressTimer = null;
 
@@ -892,11 +975,17 @@ class _SessionViewState extends ConsumerState<SessionView>
       final pos = stackBox != null
           ? stackBox.globalToLocal(event.position)
           : event.localPosition;
-      _showTermuxMenu(pos);
+      _showselectionMenu(pos);
     }
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
+    _activePointerIds.remove(event.pointer);
+    if (_activePointerIds.isEmpty) {
+      _pinchBaseFontSize = null;
+      _lastPinchFontSize = null;
+    }
+
     _longPressTimer?.cancel();
     _longPressTimer = null;
     _isSelecting = false;
@@ -937,7 +1026,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     _isSelecting = true;
 
     setState(() {
-      _termuxMenuPosition = null;
+      _selectionMenuPosition = null;
     });
   }
 
@@ -979,7 +1068,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     final paneOpen = ref.watch(sftpPaneProvider).contains(widget.tab.id);
     final ext = ref.watch(externalColorsProvider);
 
-    final strings = TermuxStrings.of(context, settings.language);
+    final strings = SelectionStrings.of(context, settings.language);
 
     if (session == null) {
       return const SizedBox.shrink();
@@ -997,51 +1086,57 @@ class _SessionViewState extends ConsumerState<SessionView>
       onPointerMove: _onPointerMove,
       onPointerUp: _onPointerUp,
       onPointerCancel: _onPointerCancel,
-      child: Actions(
-        actions: {
-          _PasteIntent: CallbackAction<_PasteIntent>(
-            onInvoke: (_) {
-              _paste();
-              return null;
-            },
-          ),
-        },
-        child: TerminalView(
-          session.terminal,
-          key: _terminalViewKey,
-          scrollController: _scrollController,
-          controller: _controller,
-          focusNode: _focus,
-          autofocus: true,
-          shortcuts: _shortcuts(settings.ctrlVPaste),
-          theme: terminalThemeFor(scheme, ext),
-          textStyle: TerminalStyle(
-            fontSize: settings.terminalFontSize,
-            fontFamily: monoFontFamily,
-            fontFamilyFallback: monoFontFallback,
-          ),
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          keyboardType: TextInputType.text,
-          onKeyEvent: (focusNode, event) {
-            if (event is KeyDownEvent) {
-              if (session.ctrlModifier) {
-                if (event.logicalKey == LogicalKeyboardKey.escape) {
-                  session.resetModifiers();
-                  return KeyEventResult.handled;
-                }
-                final keyLabel = event.character ?? event.logicalKey.keyLabel;
-                final mapped = TerminalSession.mapToCtrlChar(keyLabel);
-                if (mapped != null) {
-                  session.sendCtrlChar(mapped);
-                  return KeyEventResult.handled;
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        onScaleEnd: _onScaleEnd,
+        child: Actions(
+          actions: {
+            _PasteIntent: CallbackAction<_PasteIntent>(
+              onInvoke: (_) {
+                _paste();
+                return null;
+              },
+            ),
+          },
+          child: TerminalView(
+            session.terminal,
+            key: _terminalViewKey,
+            scrollController: _scrollController,
+            controller: _controller,
+            focusNode: _focus,
+            autofocus: true,
+            shortcuts: _shortcuts(settings.ctrlVPaste),
+            theme: terminalThemeFor(scheme, ext),
+            textStyle: TerminalStyle(
+              fontSize: _effectiveFontSize,
+              fontFamily: monoFontFamily,
+              fontFamilyFallback: monoFontFallback,
+            ),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            keyboardType: TextInputType.text,
+            onKeyEvent: (focusNode, event) {
+              if (event is KeyDownEvent) {
+                if (session.ctrlModifier) {
+                  if (event.logicalKey == LogicalKeyboardKey.escape) {
+                    session.resetModifiers();
+                    return KeyEventResult.handled;
+                  }
+                  final keyLabel = event.character ?? event.logicalKey.keyLabel;
+                  final mapped = TerminalSession.mapToCtrlChar(keyLabel);
+                  if (mapped != null) {
+                    session.sendCtrlChar(mapped);
+                    return KeyEventResult.handled;
+                  }
                 }
               }
-            }
-            return KeyEventResult.ignored;
-          },
-          onSecondaryTapDown: (details, _) {
-            _onSecondaryClick(details.globalPosition, details.localPosition);
-          },
+              return KeyEventResult.ignored;
+            },
+            onSecondaryTapDown: (details, _) {
+              _onSecondaryClick(details.globalPosition, details.localPosition);
+            },
+          ),
         ),
       ),
     );
@@ -1070,16 +1165,16 @@ class _SessionViewState extends ConsumerState<SessionView>
                 },
               ),
             ),
-          if (_termuxMenuPosition != null)
-            TermuxFloatingMenu(
-              position: _termuxMenuPosition!,
+          if (_selectionMenuPosition != null)
+            SelectionMenu(
+              position: _selectionMenuPosition!,
               hasSelection: _controller.selection != null,
               isEmptySpace: _selectionIsEmptiness,
               selectedCharCount: _getSelectedCharCount(),
               strings: strings,
               onCopy: _copy,
               onPaste: () {
-                _dismissTermuxMenu();
+                _dismissselectionMenu();
                 _paste();
               },
               onCut: _cut,
@@ -1089,17 +1184,17 @@ class _SessionViewState extends ConsumerState<SessionView>
               onReset: _reset,
               onClear: _clear,
               onLog: () {
-                _dismissTermuxMenu();
+                _dismissselectionMenu();
 
                 setState(() {
                   _showLogManually = true;
                 });
               },
               onReconnect: () {
-                _dismissTermuxMenu();
+                _dismissselectionMenu();
                 _reconnect();
               },
-              onDismiss: _dismissTermuxMenu,
+              onDismiss: _dismissselectionMenu,
             ),
           if (_controller.selection != null &&
               !_controller.selection!.isCollapsed) ...[
@@ -1204,7 +1299,7 @@ class _StatusBar extends StatelessWidget {
   final VoidCallback onReconnect;
   final bool filesOpen;
   final VoidCallback onToggleFiles;
-  final TermuxStrings strings;
+  final SelectionStrings strings;
 
   @override
   Widget build(BuildContext context) {

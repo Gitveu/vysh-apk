@@ -7,7 +7,7 @@ import '../../domain/models/app_strings.dart';
 import '../../domain/services/terminal_session.dart';
 import '../theme/app_theme.dart';
 
-/// Однострочная панель горячих клавиш терминала для мобильных устройств (как в Termux).
+/// Однострочная панель горячих клавиш терминала для мобильных устройств (как в keyboard).
 /// Размещается над клавиатурой:
 /// - Основная строка: ESC, CTRL, ALT, стрелки ↑ ↓ ← →, ^C и кнопка вызова «Расширенной панели».
 /// - Расширенная панель: TAB, /, -, ~, |, Home, End, PgUp, PgDn, ^D, ^Z.
@@ -118,21 +118,66 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Text(
                   strings.ctrlQuickTitle,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               const Divider(height: 12),
-              _ctrlMenuItem(ctx, 'Ctrl+C', strings.ctrlCSigint, () => widget.session.sendCtrlChar('C')),
-              _ctrlMenuItem(ctx, 'Ctrl+U', strings.isRu ? 'Стереть строку ввода' : 'Erase input line', () => widget.session.sendCtrlChar('U')),
-              _ctrlMenuItem(ctx, 'Ctrl+D', strings.ctrlDEof, () => widget.session.sendCtrlChar('D')),
-              _ctrlMenuItem(ctx, 'Ctrl+Z', strings.ctrlZSuspend, () => widget.session.sendCtrlChar('Z')),
-              _ctrlMenuItem(ctx, 'Ctrl+L', strings.ctrlLClear, () => widget.session.sendCtrlChar('L')),
-              _ctrlMenuItem(ctx, 'Ctrl+A', strings.ctrlABeginning, () => widget.session.sendCtrlChar('A')),
-              _ctrlMenuItem(ctx, 'Ctrl+E', strings.ctrlEEnd, () => widget.session.sendCtrlChar('E')),
-              _ctrlMenuItem(ctx, 'Ctrl+R', strings.ctrlRSearch, () => widget.session.sendCtrlChar('R')),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+C',
+                strings.ctrlCSigint,
+                () => widget.session.sendCtrlChar('C'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+U',
+                strings.isRu ? 'Стереть строку ввода' : 'Erase input line',
+                () => widget.session.sendCtrlChar('U'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+D',
+                strings.ctrlDEof,
+                () => widget.session.sendCtrlChar('D'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+Z',
+                strings.ctrlZSuspend,
+                () => widget.session.sendCtrlChar('Z'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+L',
+                strings.ctrlLClear,
+                () => widget.session.sendCtrlChar('L'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+A',
+                strings.ctrlABeginning,
+                () => widget.session.sendCtrlChar('A'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+E',
+                strings.ctrlEEnd,
+                () => widget.session.sendCtrlChar('E'),
+              ),
+              _ctrlMenuItem(
+                ctx,
+                'Ctrl+R',
+                strings.ctrlRSearch,
+                () => widget.session.sendCtrlChar('R'),
+              ),
             ],
           ),
         ),
@@ -140,7 +185,12 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
     );
   }
 
-  Widget _ctrlMenuItem(BuildContext ctx, String shortcut, String desc, VoidCallback onTap) {
+  Widget _ctrlMenuItem(
+    BuildContext ctx,
+    String shortcut,
+    String desc,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       dense: true,
       visualDensity: VisualDensity.compact,
@@ -152,8 +202,11 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
         ),
         child: Text(
           shortcut,
-          style: monoStyle(ctx, size: 12.5, color: Theme.of(ctx).colorScheme.onPrimaryContainer)
-              .copyWith(fontWeight: FontWeight.bold),
+          style: monoStyle(
+            ctx,
+            size: 12.5,
+            color: Theme.of(ctx).colorScheme.onPrimaryContainer,
+          ).copyWith(fontWeight: FontWeight.bold),
         ),
       ),
       title: Text(desc, style: const TextStyle(fontSize: 13.5)),
@@ -176,7 +229,10 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         border: Border(
-          top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35), width: 0.7),
+          top: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            width: 0.7,
+          ),
         ),
       ),
       child: Column(
@@ -189,7 +245,10 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
               decoration: BoxDecoration(
                 color: scheme.surfaceContainer.withValues(alpha: 0.6),
                 border: Border(
-                  bottom: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2), width: 0.7),
+                  bottom: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.2),
+                    width: 0.7,
+                  ),
                 ),
               ),
               child: SingleChildScrollView(
@@ -203,22 +262,10 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                       label: 'TAB',
                       onTap: () => _sendKey(TerminalKey.tab),
                     ),
-                    _KeyChip(
-                      label: '/',
-                      onTap: () => _sendText('/'),
-                    ),
-                    _KeyChip(
-                      label: '-',
-                      onTap: () => _sendText('-'),
-                    ),
-                    _KeyChip(
-                      label: '~',
-                      onTap: () => _sendText('~'),
-                    ),
-                    _KeyChip(
-                      label: '|',
-                      onTap: () => _sendText('|'),
-                    ),
+                    _KeyChip(label: '/', onTap: () => _sendText('/')),
+                    _KeyChip(label: '-', onTap: () => _sendText('-')),
+                    _KeyChip(label: '~', onTap: () => _sendText('~')),
+                    _KeyChip(label: '|', onTap: () => _sendText('|')),
                     const _Divider(),
                     _KeyChip(
                       label: 'HOME',
@@ -239,7 +286,9 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     const _Divider(),
                     _KeyChip(
                       label: '^U',
-                      tooltip: strings.isRu ? 'Стереть строку (^U)' : 'Erase line (^U)',
+                      tooltip: strings.isRu
+                          ? 'Стереть строку (^U)'
+                          : 'Erase line (^U)',
                       onTap: () => widget.session.sendCtrlChar('U'),
                     ),
                     _KeyChip(
@@ -254,15 +303,21 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     ),
                     _KeyChip(
                       label: '^Z',
-                      tooltip: strings.isRu ? 'Фон (SIGTSTP)' : 'Background (SIGTSTP)',
+                      tooltip: strings.isRu
+                          ? 'Фон (SIGTSTP)'
+                          : 'Background (SIGTSTP)',
                       onTap: () => widget.session.sendCtrlChar('Z'),
                     ),
                     if (widget.onToggleFiles != null) ...[
                       const _Divider(),
                       _KeyChip(
-                        icon: widget.filesOpen ? Icons.terminal_rounded : Icons.folder_outlined,
+                        icon: widget.filesOpen
+                            ? Icons.terminal_rounded
+                            : Icons.folder_outlined,
                         label: 'SFTP',
-                        tooltip: widget.filesOpen ? strings.console : strings.sftpPaneTitle,
+                        tooltip: widget.filesOpen
+                            ? strings.console
+                            : strings.sftpPaneTitle,
                         active: widget.filesOpen,
                         onTap: widget.onToggleFiles!,
                       ),
@@ -335,7 +390,9 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     icon: _isExpanded ? Icons.expand_more : Icons.more_horiz,
                     tooltip: _isExpanded
                         ? (strings.isRu ? 'Скрыть панель' : 'Hide panel')
-                        : (strings.isRu ? 'Расширенная панель (Tab, /, SFTP)' : 'Expanded panel (Tab, /, SFTP)'),
+                        : (strings.isRu
+                              ? 'Расширенная панель (Tab, /, SFTP)'
+                              : 'Expanded panel (Tab, /, SFTP)'),
                     active: _isExpanded,
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -375,9 +432,13 @@ class _KeyChip extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final bg = active ? scheme.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    final bg = active
+        ? scheme.primary
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.6);
     final fg = active ? scheme.onPrimary : scheme.onSurface;
-    final borderColor = active ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.4);
+    final borderColor = active
+        ? scheme.primary
+        : scheme.outlineVariant.withValues(alpha: 0.4);
 
     Widget content = Material(
       color: Colors.transparent,
@@ -430,7 +491,9 @@ class _Divider extends StatelessWidget {
       width: 1,
       height: 16,
       margin: const EdgeInsets.symmetric(horizontal: 3),
-      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.35),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.35),
     );
   }
 }

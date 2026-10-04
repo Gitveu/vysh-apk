@@ -101,7 +101,7 @@ class SshForegroundService : Service() {
         builder
             .setContentTitle("vysh: $hostTitle")
             .setContentText("Соединение активно в фоне")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.mipmap.ic_launcher_monet)
             .setOngoing(true)
 
         if (pendingIntent != null) {

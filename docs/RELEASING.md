@@ -66,3 +66,23 @@ CI проверяет каждый push в `main`. Для правок толь�
 ```sh
 git commit -m "docs: README [skip ci]"
 ```
+
+## Быстро изменить версию и build
+
+Все значения находятся в двух местах:
+
+1. В `pubspec.yaml` измените `version: X.Y.Z+N`.
+2. В `lib/app/version.dart` измените `appVersion` на `X.Y.Z` и `appBuildNumber` на тот же `N`.
+
+Для локальной сборки дата записывается автоматически через `BUILD_DATE`:
+
+```sh
+BUILD_DATE=$(date '+%d.%m.%y %H:%M:%S') flutter build linux --release
+flutter build windows --release --dart-define="BUILD_DATE=$(date '+%d.%m.%y %H:%M:%S')"
+flutter build apk --release --dart-define="BUILD_DATE=$(date '+%d.%m.%y %H:%M:%S')"
+```
+
+`BUILD_DATE` нужно передавать при локальной сборке: это и есть время хоста, на котором собран файл. Без него строка даты в приложении скрыта.
+
+
+Для локальной сборки можно использовать `./tools/build_local.sh apk` (или `linux`/`windows`). Скрипт сам берёт дату и время текущего хоста в формате `dd.mm.yy HH:mm:ss`.

@@ -1,16 +1,10 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../domain/models/app_settings.dart';
-import '../domain/services/external_colors_controller.dart';
 import '../domain/services/settings_controller.dart';
 import '../ui/shell/app_shell.dart';
-import '../ui/shell/ui_state.dart';
 import '../ui/theme/app_theme.dart';
 
 /// Корневой навигатор — через него сессии показывают диалоги
@@ -23,34 +17,13 @@ class VyshApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
-    final ext = ref.watch(externalColorsProvider);
-
-    // Переключили режим заголовка — применяем сразу, без перезапуска.
-    ref.listen<bool>(customTitleBarProvider, (_, custom) {
-      if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
-        windowManager.setTitleBarStyle(
-          custom ? TitleBarStyle.hidden : TitleBarStyle.normal,
-          windowButtonVisibility: !custom,
-        );
-      }
-    });
-
-    final e = s.colorSource == ColorSource.preset ? null : ext;
-    final seed = e?.seed ?? Color(s.seedColor);
+    final seed = Color(s.seedColor);
 
     // Доты задают тёмный/светлый режим — следуем им, если тема «Системная».
-    var mode = s.themeMode;
-    final dotsBrightness = e?.brightness;
-    if (mode == ThemeMode.system && dotsBrightness != null) {
-      mode = dotsBrightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
-    }
+    final mode = s.themeMode;
 
-    ThemeData theme(Brightness b) => buildTheme(
-          seed: seed,
-          brightness: b,
-          compact: s.compact,
-          roles: e?.roles[b],
-        );
+    ThemeData theme(Brightness b) =>
+        buildTheme(seed: seed, brightness: b, compact: s.compact, roles: null);
 
     return MaterialApp(
       title: 'vysh',
@@ -63,10 +36,7 @@ class VyshApp extends ConsumerWidget {
       locale: s.language == AppLanguage.ru
           ? const Locale('ru')
           : (s.language == AppLanguage.en ? const Locale('en') : null),
-      supportedLocales: const [
-        Locale('ru'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('ru'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -75,7 +45,9 @@ class VyshApp extends ConsumerWidget {
       localeResolutionCallback: (locale, supportedLocales) {
         if (locale != null) {
           final code = locale.languageCode.toLowerCase();
-          if (code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk')) {
+          if (code.startsWith('ru') ||
+              code.startsWith('be') ||
+              code.startsWith('uk')) {
             return const Locale('ru');
           }
         }

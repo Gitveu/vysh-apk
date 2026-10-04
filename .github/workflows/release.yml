@@ -27,7 +27,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
-      - run: flutter build linux --release
+      - run: flutter build linux --release --dart-define=BUILD_DATE=$(date -u '+%d.%m.%y %H:%M:%S')
       - name: Упаковать tar.gz
         run: |
           cd build/linux/x64/release/bundle
@@ -47,7 +47,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release
+      - run: flutter build windows --release --dart-define=BUILD_DATE=$((Get-Date).ToUniversalTime().ToString("dd.MM.yy HH:mm:ss"))
       - name: Упаковать zip
         shell: pwsh
         run: |

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/version.dart';
@@ -11,10 +10,8 @@ import '../../domain/models/app_strings.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/local_files.dart';
-import '../../infra/storage/app_paths.dart';
 import '../theme/app_theme.dart';
 import 'appearance_sections.dart';
-import 'app_icon_picker_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -48,70 +45,53 @@ class SettingsPage extends ConsumerWidget {
                   children: [
                     _Row(
                       title: strings.themeTitle,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) =>
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minWidth: constraints.maxWidth,
-                                ),
-                                child: SegmentedButton<ThemeMode>(
-                                  showSelectedIcon: false,
-                                  style: const ButtonStyle(
-                                    visualDensity: VisualDensity.compact,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  segments: [
-                                    ButtonSegment(
-                                      value: ThemeMode.system,
-                                      label: Text(
-                                        strings.themeSystem,
-                                        maxLines: 1,
-                                        softWrap: false,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.brightness_auto,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    ButtonSegment(
-                                      value: ThemeMode.light,
-                                      label: Text(
-                                        strings.themeLight,
-                                        maxLines: 1,
-                                        softWrap: false,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.light_mode_outlined,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    ButtonSegment(
-                                      value: ThemeMode.dark,
-                                      label: Text(
-                                        strings.themeDark,
-                                        maxLines: 1,
-                                        softWrap: false,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.dark_mode_outlined,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  ],
-                                  selected: {s.themeMode},
-                                  onSelectionChanged: (v) =>
-                                      ctrl.setThemeMode(v.first),
-                                ),
-                              ),
+                      child: SegmentedButton<ThemeMode>(
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: WidgetStatePropertyAll(Size(0, 64)),
+                          padding: WidgetStatePropertyAll(
+                            EdgeInsets.symmetric(horizontal: 6),
+                          ),
+                        ),
+                        segments: [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(strings.themeSystem, maxLines: 1),
                             ),
+                            icon: const Icon(Icons.brightness_auto, size: 18),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(strings.themeLight, maxLines: 1),
+                            ),
+                            icon: const Icon(
+                              Icons.light_mode_outlined,
+                              size: 18,
+                            ),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(strings.themeDark, maxLines: 1),
+                            ),
+                            icon: const Icon(
+                              Icons.dark_mode_outlined,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                        selected: {s.themeMode},
+                        onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const ColorSourceSection(),
-                    const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.density_medium),
@@ -120,21 +100,6 @@ class SettingsPage extends ConsumerWidget {
                       onChanged: ctrl.setCompact,
                     ),
                     const SizedBox(height: 8),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.app_shortcut_outlined),
-                      title: Text(strings.appIconTitle),
-                      subtitle: Text(switch (s.appIcon) {
-                        'monet' => strings.appIconMonet,
-                        _ => strings.appIconDefault,
-                      }),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AppIconPickerPage(),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
@@ -214,11 +179,11 @@ class SettingsPage extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Slider(
-                                min: 9,
-                                max: 24,
-                                divisions: 15,
+                                min: 8,
+                                max: 32,
+                                divisions: 24,
                                 value: s.terminalFontSize
-                                    .clamp(9, 24)
+                                    .clamp(8, 32)
                                     .toDouble(),
                                 label: s.terminalFontSize.round().toString(),
                                 onChanged: ctrl.setTerminalFontSize,
@@ -250,6 +215,15 @@ class SettingsPage extends ConsumerWidget {
                           color: scheme.onSurface,
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.text_fields),
+                      title: Text(strings.rememberTerminalFontSizeTitle),
+                      subtitle: Text(strings.rememberTerminalFontSizeDesc),
+                      value: s.rememberTerminalFontSize,
+                      onChanged: ctrl.setRememberTerminalFontSize,
                     ),
                     const SizedBox(height: 8),
                     SwitchListTile(
@@ -309,54 +283,41 @@ class SettingsPage extends ConsumerWidget {
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
-                    LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: constraints.maxWidth,
-                          ),
-                          child: SegmentedButton<RightClickAction>(
-                            showSelectedIcon: false,
-                            style: const ButtonStyle(
-                              visualDensity: VisualDensity.compact,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            segments: [
-                              ButtonSegment(
-                                value: RightClickAction.menu,
-                                icon: const Icon(Icons.menu_open, size: 18),
-                                label: Text(
-                                  strings.rightClickMenu,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                ),
-                              ),
-                              ButtonSegment(
-                                value: RightClickAction.paste,
-                                icon: const Icon(Icons.content_paste, size: 18),
-                                label: Text(
-                                  strings.rightClickPaste,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                ),
-                              ),
-                              ButtonSegment(
-                                value: RightClickAction.smart,
-                                icon: const Icon(Icons.auto_awesome, size: 18),
-                                label: Text(
-                                  strings.rightClickSmart,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                ),
-                              ),
-                            ],
-                            selected: {s.rightClick},
-                            onSelectionChanged: (v) =>
-                                ctrl.setRightClick(v.first),
+                    SegmentedButton<RightClickAction>(
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        minimumSize: WidgetStatePropertyAll(Size(0, 64)),
+                      ),
+                      segments: [
+                        ButtonSegment(
+                          value: RightClickAction.menu,
+                          icon: const Icon(Icons.menu_open, size: 18),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(strings.rightClickMenu, maxLines: 1),
                           ),
                         ),
-                      ),
+                        ButtonSegment(
+                          value: RightClickAction.paste,
+                          icon: const Icon(Icons.content_paste, size: 18),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(strings.rightClickPaste, maxLines: 1),
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: RightClickAction.smart,
+                          icon: const Icon(Icons.auto_awesome, size: 18),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(strings.rightClickSmart, maxLines: 1),
+                          ),
+                        ),
+                      ],
+                      selected: {s.rightClick},
+                      onSelectionChanged: (v) => ctrl.setRightClick(v.first),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -439,40 +400,6 @@ class SettingsPage extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        strings.isRu ? 'Папка с данными' : 'Config folder',
-                      ),
-                      subtitle: Text(
-                        AppPaths.configDir.path,
-                        style: monoStyle(
-                          context,
-                          size: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: IconButton(
-                        tooltip: strings.isRu
-                            ? 'Скопировать путь'
-                            : 'Copy path',
-                        icon: const Icon(Icons.copy),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: AppPaths.configDir.path),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                strings.isRu
-                                    ? 'Путь скопирован'
-                                    : 'Path copied',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                   ],
                 ),
                 _Section(
@@ -490,6 +417,14 @@ class SettingsPage extends ConsumerWidget {
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    if (buildDate.isNotEmpty)
+                      Text(
+                        'build $appBuildNumber · $buildDate',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                   ],
                 ),
               ],

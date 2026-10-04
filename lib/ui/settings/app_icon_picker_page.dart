@@ -33,7 +33,7 @@ class _AppIconPickerPageState extends ConsumerState<AppIconPickerPage> {
   void _apply() async {
     HapticFeedback.mediumImpact();
     ref.read(settingsProvider.notifier).setAppIcon(_selectedId);
-    await AppIconManager.setIcon(_selectedId);
+    await AppIconManager.setIcon();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

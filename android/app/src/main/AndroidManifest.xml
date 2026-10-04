@@ -10,8 +10,8 @@
     <application
         android:label="vysh"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/ic_launcher_monet"
+        android:roundIcon="@mipmap/ic_launcher_monet_round"
         android:localeConfig="@xml/locales_config">
         <activity
             android:name=".MainActivity"
@@ -32,21 +32,8 @@
         </activity>
 
         <activity-alias
-            android:name=".MainActivityDefault"
-            android:enabled="true"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
             android:name=".MainActivityMonet"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_monet"
             android:roundIcon="@mipmap/ic_launcher_monet_round"

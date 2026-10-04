@@ -75,23 +75,13 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "setIcon" -> {
+                    // Monet is the only supported launcher icon. Keep the method for
+                    // settings/state migration and make all calls idempotent.
                     try {
-                        val icon = call.argument<String>("icon") ?: "default"
-                        val pm = packageManager
-                        val defaultAlias = ComponentName(packageName, "$packageName.MainActivityDefault")
                         val monetAlias = ComponentName(packageName, "$packageName.MainActivityMonet")
-
-                        val enableComponent = if (icon == "monet") monetAlias else defaultAlias
-                        val disableComponent = if (icon == "monet") defaultAlias else monetAlias
-
-                        pm.setComponentEnabledSetting(
-                            enableComponent,
+                        packageManager.setComponentEnabledSetting(
+                            monetAlias,
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                            PackageManager.DONT_KILL_APP
-                        )
-                        pm.setComponentEnabledSetting(
-                            disableComponent,
-                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                             PackageManager.DONT_KILL_APP
                         )
                         result.success(true)
