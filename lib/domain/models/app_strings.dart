@@ -12,18 +12,15 @@ class AppStrings {
   bool get isRussian => isRu;
 
   static AppStrings of(BuildContext context, [AppLanguage language = AppLanguage.auto]) {
-    final bool ru;
-    switch (language) {
-      case AppLanguage.ru:
-        ru = true;
-      case AppLanguage.en:
-        ru = false;
-      case AppLanguage.auto:
-        final loc = Localizations.maybeLocaleOf(context) ??
-            ui.PlatformDispatcher.instance.locale;
-        final code = loc.languageCode.toLowerCase();
-        ru = code == 'ru' || code == 'be' || code == 'uk';
-    }
+    if (language == AppLanguage.ru) return const AppStrings(isRu: true);
+    if (language == AppLanguage.en) return const AppStrings(isRu: false);
+
+    final loc = Localizations.maybeLocaleOf(context) ??
+        (ui.PlatformDispatcher.instance.locales.isNotEmpty
+            ? ui.PlatformDispatcher.instance.locales.first
+            : ui.PlatformDispatcher.instance.locale);
+    final code = loc.languageCode.toLowerCase();
+    final ru = code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk');
     return AppStrings(isRu: ru);
   }
 
@@ -111,9 +108,12 @@ class AppStrings {
   String get themeSystem => isRu ? 'Системная' : 'System';
   String get themeLight => isRu ? 'Светлая' : 'Light';
   String get themeDark => isRu ? 'Тёмная' : 'Dark';
-  String get colorSourcePreset => isRu ? 'Палитра' : 'Preset';
+  String get colorSourceTitle => isRu ? 'Цвета' : 'Colors';
+  String get colorSourcePreset => isRu ? 'Свои' : 'Custom';
   String get colorSourceSystem => isRu ? 'Системный акцент' : 'System accent';
-  String get colorSourceDots => isRu ? 'Конфиг цветов' : 'Color dots';
+  String get colorSourceSystemWin => isRu ? 'Акцент Windows' : 'Windows accent';
+  String get colorSourceSystemSys => isRu ? 'Акцент системы' : 'System accent';
+  String get colorSourceDots => isRu ? 'Из дотов' : 'From dots';
   String get compactUi => isRu ? 'Компактный интерфейс' : 'Compact interface';
   String get appIconTitle => isRu ? 'Иконка приложения' : 'App icon';
   String get appIconMonet => isRu ? 'Monet (Динамическая)' : 'Monet (Dynamic)';

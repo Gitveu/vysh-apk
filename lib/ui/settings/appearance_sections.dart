@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/app_settings.dart';
+import '../../domain/models/app_strings.dart';
 import '../../domain/models/external_colors.dart';
 import '../../domain/services/external_colors_controller.dart';
 import '../../domain/services/settings_controller.dart';
@@ -43,26 +44,45 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
     final ctrl = ref.read(settingsProvider.notifier);
     final ext = ref.watch(externalColorsProvider);
     final notFound = ref.read(externalColorsProvider.notifier).notFound;
+    final strings = AppStrings.of(context, s.language);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Цвета', style: theme.textTheme.titleSmall),
+        Text(strings.colorSourceTitle, style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         SegmentedButton<ColorSource>(
+          showSelectedIcon: false,
+          style: const ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           segments: [
-            const ButtonSegment(
-                value: ColorSource.preset, icon: Icon(Icons.palette_outlined), label: Text('Свои')),
+            ButtonSegment(
+              value: ColorSource.preset,
+              icon: const Icon(Icons.palette_outlined, size: 18),
+              label: Text(strings.colorSourcePreset, maxLines: 1, softWrap: false),
+            ),
             if (!kIsWeb && (Platform.isWindows || Platform.isLinux))
               ButtonSegment(
-                  value: ColorSource.system,
-                  icon: const Icon(Icons.computer),
-                  label: Text(!kIsWeb && Platform.isWindows ? 'Акцент Windows' : 'Акцент системы')),
+                value: ColorSource.system,
+                icon: const Icon(Icons.computer, size: 18),
+                label: Text(
+                  !kIsWeb && Platform.isWindows
+                      ? strings.colorSourceSystemWin
+                      : strings.colorSourceSystemSys,
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+              ),
             if (!kIsWeb && Platform.isLinux)
-              const ButtonSegment(
-                  value: ColorSource.dots, icon: Icon(Icons.wallpaper), label: Text('Из дотов')),
+              ButtonSegment(
+                value: ColorSource.dots,
+                icon: const Icon(Icons.wallpaper, size: 18),
+                label: Text(strings.colorSourceDots, maxLines: 1, softWrap: false),
+              ),
           ],
           selected: {s.colorSource},
           onSelectionChanged: (v) => ctrl.setColorSource(v.first),

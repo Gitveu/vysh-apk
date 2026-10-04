@@ -28,7 +28,12 @@ class SettingsPage extends ConsumerWidget {
     final scheme = theme.colorScheme;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
+      padding: EdgeInsets.fromLTRB(
+        DesktopEnv.isMobile ? 16 : 28,
+        20,
+        DesktopEnv.isMobile ? 16 : 28,
+        28,
+      ),
       children: [
         Align(
           alignment: Alignment.topLeft,
@@ -43,26 +48,34 @@ class SettingsPage extends ConsumerWidget {
                   children: [
                     _Row(
                       title: strings.themeTitle,
-                      child: SegmentedButton<ThemeMode>(
-                        segments: [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: Text(strings.themeSystem),
-                            icon: const Icon(Icons.brightness_auto),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: Text(strings.themeLight),
-                            icon: const Icon(Icons.light_mode_outlined),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: Text(strings.themeDark),
-                            icon: const Icon(Icons.dark_mode_outlined),
-                          ),
-                        ],
-                        selected: {s.themeMode},
-                        onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
+                          segments: [
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: Text(strings.themeSystem, maxLines: 1, softWrap: false),
+                              icon: const Icon(Icons.brightness_auto, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: Text(strings.themeLight, maxLines: 1, softWrap: false),
+                              icon: const Icon(Icons.light_mode_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: Text(strings.themeDark, maxLines: 1, softWrap: false),
+                              icon: const Icon(Icons.dark_mode_outlined, size: 18),
+                            ),
+                          ],
+                          selected: {s.themeMode},
+                          onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -201,32 +214,30 @@ class SettingsPage extends ConsumerWidget {
                       onChanged: ctrl.setIncognitoKeyboard,
                     ),
                     const SizedBox(height: 8),
-                    if (DesktopEnv.isDesktop) ...[
-                      _Row(
-                        title: strings.languageTitle,
-                        child: DropdownButton<AppLanguage>(
-                          value: s.language,
-                          underline: const SizedBox.shrink(),
-                          borderRadius: BorderRadius.circular(12),
-                          items: [
-                            DropdownMenuItem(
-                              value: AppLanguage.auto,
-                              child: Text(strings.languageAuto),
-                            ),
-                            DropdownMenuItem(
-                              value: AppLanguage.ru,
-                              child: Text(strings.languageRu),
-                            ),
-                            DropdownMenuItem(
-                              value: AppLanguage.en,
-                              child: Text(strings.languageEn),
-                            ),
-                          ],
-                          onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
-                        ),
+                    _Row(
+                      title: strings.languageTitle,
+                      child: DropdownButton<AppLanguage>(
+                        value: s.language,
+                        underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        items: [
+                          DropdownMenuItem(
+                            value: AppLanguage.auto,
+                            child: Text(strings.languageAuto),
+                          ),
+                          DropdownMenuItem(
+                            value: AppLanguage.ru,
+                            child: Text(strings.languageRu),
+                          ),
+                          DropdownMenuItem(
+                            value: AppLanguage.en,
+                            child: Text(strings.languageEn),
+                          ),
+                        ],
+                        onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                    ),
+                    const SizedBox(height: 8),
                     const SizedBox(height: 12),
                     Text(
                       DesktopEnv.isMobile ? strings.rightClickMobileTitle : strings.rightClickDesktopTitle,
@@ -234,19 +245,27 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     SegmentedButton<RightClickAction>(
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                       segments: [
                         ButtonSegment(
-                            value: RightClickAction.menu,
-                            icon: const Icon(Icons.menu_open),
-                            label: Text(strings.rightClickMenu)),
+                          value: RightClickAction.menu,
+                          icon: const Icon(Icons.menu_open, size: 18),
+                          label: Text(strings.rightClickMenu, maxLines: 1, softWrap: false),
+                        ),
                         ButtonSegment(
-                            value: RightClickAction.paste,
-                            icon: const Icon(Icons.content_paste),
-                            label: Text(strings.rightClickPaste)),
+                          value: RightClickAction.paste,
+                          icon: const Icon(Icons.content_paste, size: 18),
+                          label: Text(strings.rightClickPaste, maxLines: 1, softWrap: false),
+                        ),
                         ButtonSegment(
-                            value: RightClickAction.smart,
-                            icon: const Icon(Icons.auto_awesome),
-                            label: Text(strings.rightClickSmart)),
+                          value: RightClickAction.smart,
+                          icon: const Icon(Icons.auto_awesome, size: 18),
+                          label: Text(strings.rightClickSmart, maxLines: 1, softWrap: false),
+                        ),
                       ],
                       selected: {s.rightClick},
                       onSelectionChanged: (v) => ctrl.setRightClick(v.first),
@@ -400,6 +419,16 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (DesktopEnv.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          child,
+        ],
+      );
+    }
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 16,

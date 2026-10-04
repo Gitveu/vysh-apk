@@ -15,19 +15,15 @@ class TermuxStrings {
     BuildContext context, [
     AppLanguage language = AppLanguage.auto,
   ]) {
-    final bool isRu;
+    if (language == AppLanguage.ru) return const TermuxStrings(isRussian: true);
+    if (language == AppLanguage.en) return const TermuxStrings(isRussian: false);
 
-    switch (language) {
-      case AppLanguage.ru:
-        isRu = true;
-      case AppLanguage.en:
-        isRu = false;
-      case AppLanguage.auto:
-        final loc = Localizations.maybeLocaleOf(context) ??
-            ui.PlatformDispatcher.instance.locale;
-        final code = loc.languageCode.toLowerCase();
-        isRu = code == 'ru' || code == 'be' || code == 'uk';
-    }
+    final loc = Localizations.maybeLocaleOf(context) ??
+        (ui.PlatformDispatcher.instance.locales.isNotEmpty
+            ? ui.PlatformDispatcher.instance.locales.first
+            : ui.PlatformDispatcher.instance.locale);
+    final code = loc.languageCode.toLowerCase();
+    final isRu = code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk');
 
     return TermuxStrings(isRussian: isRu);
   }

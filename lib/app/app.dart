@@ -60,6 +60,9 @@ class VyshApp extends ConsumerWidget {
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),
       themeAnimationDuration: const Duration(milliseconds: 300),
+      locale: s.language == AppLanguage.ru
+          ? const Locale('ru')
+          : (s.language == AppLanguage.en ? const Locale('en') : null),
       supportedLocales: const [
         Locale('ru'),
         Locale('en'),
@@ -72,7 +75,7 @@ class VyshApp extends ConsumerWidget {
       localeResolutionCallback: (locale, supportedLocales) {
         if (locale != null) {
           final code = locale.languageCode.toLowerCase();
-          if (code == 'ru' || code == 'be' || code == 'uk') {
+          if (code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk')) {
             return const Locale('ru');
           }
         }

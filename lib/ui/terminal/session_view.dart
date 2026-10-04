@@ -948,38 +948,18 @@ class _SessionViewState extends ConsumerState<SessionView>
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
           keyboardType: settings.incognitoKeyboard
               ? TextInputType.visiblePassword
-              : TextInputType.multiline,
+              : TextInputType.text,
           onKeyEvent: (focusNode, event) {
             if (event is KeyDownEvent) {
-              if (session.pendingCtrlChar != null) {
-                if (event.logicalKey == LogicalKeyboardKey.enter ||
-                    event.logicalKey == LogicalKeyboardKey.numpadEnter) {
-                  session.sendPendingCtrl();
-                  return KeyEventResult.handled;
-                }
-                if (event.logicalKey == LogicalKeyboardKey.backspace) {
-                  session.clearPendingCharOnly();
-                  return KeyEventResult.handled;
-                }
+              if (session.ctrlModifier) {
                 if (event.logicalKey == LogicalKeyboardKey.escape) {
-                  session.clearPendingCtrl();
+                  session.resetModifiers();
                   return KeyEventResult.handled;
                 }
                 final keyLabel = event.character ?? event.logicalKey.keyLabel;
                 final mapped = TerminalSession.mapToCtrlChar(keyLabel);
                 if (mapped != null) {
-                  session.setPendingCtrl(mapped);
-                  return KeyEventResult.handled;
-                }
-              } else if (session.ctrlModifier) {
-                if (event.logicalKey == LogicalKeyboardKey.escape) {
-                  session.clearPendingCtrl();
-                  return KeyEventResult.handled;
-                }
-                final keyLabel = event.character ?? event.logicalKey.keyLabel;
-                final mapped = TerminalSession.mapToCtrlChar(keyLabel);
-                if (mapped != null) {
-                  session.setPendingCtrl(mapped);
+                  session.sendCtrlChar(mapped);
                   return KeyEventResult.handled;
                 }
               }
@@ -1112,7 +1092,11 @@ class _SessionViewState extends ConsumerState<SessionView>
                 ),
         ),
         if (settings.showAccessoryBar && (!isCompact || !paneOpen))
-          TerminalAccessoryBar(session: session, focusNode: _focus),
+          TerminalAccessoryBar(
+            session: session,
+            focusNode: _focus,
+            language: settings.language,
+          ),
         _StatusBar(
           tab: widget.tab,
           serverVersion: session.serverVersion,

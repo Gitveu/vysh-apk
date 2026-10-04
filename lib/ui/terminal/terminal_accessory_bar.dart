@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:xterm2/xterm.dart';
 
+import '../../domain/models/app_settings.dart';
 import '../../domain/models/app_strings.dart';
 import '../../domain/services/terminal_session.dart';
 import '../theme/app_theme.dart';
@@ -17,12 +18,14 @@ class TerminalAccessoryBar extends StatefulWidget {
     required this.focusNode,
     this.onToggleFiles,
     this.filesOpen = false,
+    this.language = AppLanguage.auto,
   });
 
   final TerminalSession session;
   final FocusNode focusNode;
   final VoidCallback? onToggleFiles;
   final bool filesOpen;
+  final AppLanguage language;
 
   @override
   State<TerminalAccessoryBar> createState() => _TerminalAccessoryBarState();
@@ -60,23 +63,6 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
 
   void _sendKey(TerminalKey key) {
     HapticFeedback.lightImpact();
-    if (widget.session.pendingCtrlChar != null) {
-      if (key == TerminalKey.enter || key == TerminalKey.numpadEnter) {
-        widget.session.sendPendingCtrl();
-        _refocus();
-        return;
-      }
-      if (key == TerminalKey.backspace) {
-        widget.session.clearPendingCharOnly();
-        _refocus();
-        return;
-      }
-      if (key == TerminalKey.escape) {
-        widget.session.clearPendingCtrl();
-        _refocus();
-        return;
-      }
-    }
     widget.session.terminal.keyInput(
       key,
       ctrl: widget.session.ctrlModifier,
@@ -86,32 +72,12 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
     _refocus();
   }
 
-  void _sendDirect(String text) {
-    HapticFeedback.lightImpact();
-    widget.session.sendDirect(text);
-    widget.session.resetModifiers();
-    _refocus();
-  }
-
   void _sendText(String text) {
     HapticFeedback.lightImpact();
-    if (widget.session.pendingCtrlChar != null) {
-      if (text == '\r' || text == '\n') {
-        widget.session.sendPendingCtrl();
-        _refocus();
-        return;
-      }
-      final mapped = TerminalSession.mapToCtrlChar(text);
-      if (mapped != null) {
-        widget.session.setPendingCtrl(mapped);
-        _refocus();
-        return;
-      }
-    }
     if (widget.session.ctrlModifier) {
       final mapped = TerminalSession.mapToCtrlChar(text);
       if (mapped != null) {
-        widget.session.setPendingCtrl(mapped);
+        widget.session.sendCtrlChar(mapped);
         _refocus();
         return;
       }
@@ -129,7 +95,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
   void _showCtrlMenu(BuildContext context) {
     HapticFeedback.selectionClick();
     final scheme = Theme.of(context).colorScheme;
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.of(context, widget.language);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: scheme.surfaceContainerHigh,
@@ -159,14 +125,14 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                 ),
               ),
               const Divider(height: 12),
-              _ctrlMenuItem(ctx, 'Ctrl+C', strings.ctrlCSigint, () => _sendDirect('\x03')),
-              _ctrlMenuItem(ctx, 'Ctrl+U', strings.isRu ? 'Стереть строку ввода' : 'Erase input line', () => _sendDirect('\x15')),
-              _ctrlMenuItem(ctx, 'Ctrl+D', strings.ctrlDEof, () => _sendDirect('\x04')),
-              _ctrlMenuItem(ctx, 'Ctrl+Z', strings.ctrlZSuspend, () => _sendDirect('\x1a')),
-              _ctrlMenuItem(ctx, 'Ctrl+L', strings.ctrlLClear, () => _sendDirect('\x0c')),
-              _ctrlMenuItem(ctx, 'Ctrl+A', strings.ctrlABeginning, () => _sendDirect('\x01')),
-              _ctrlMenuItem(ctx, 'Ctrl+E', strings.ctrlEEnd, () => _sendDirect('\x05')),
-              _ctrlMenuItem(ctx, 'Ctrl+R', strings.ctrlRSearch, () => _sendDirect('\x12')),
+              _ctrlMenuItem(ctx, 'Ctrl+C', strings.ctrlCSigint, () => widget.session.sendCtrlChar('C')),
+              _ctrlMenuItem(ctx, 'Ctrl+U', strings.isRu ? 'Стереть строку ввода' : 'Erase input line', () => widget.session.sendCtrlChar('U')),
+              _ctrlMenuItem(ctx, 'Ctrl+D', strings.ctrlDEof, () => widget.session.sendCtrlChar('D')),
+              _ctrlMenuItem(ctx, 'Ctrl+Z', strings.ctrlZSuspend, () => widget.session.sendCtrlChar('Z')),
+              _ctrlMenuItem(ctx, 'Ctrl+L', strings.ctrlLClear, () => widget.session.sendCtrlChar('L')),
+              _ctrlMenuItem(ctx, 'Ctrl+A', strings.ctrlABeginning, () => widget.session.sendCtrlChar('A')),
+              _ctrlMenuItem(ctx, 'Ctrl+E', strings.ctrlEEnd, () => widget.session.sendCtrlChar('E')),
+              _ctrlMenuItem(ctx, 'Ctrl+R', strings.ctrlRSearch, () => widget.session.sendCtrlChar('R')),
             ],
           ),
         ),
@@ -202,7 +168,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.of(context, widget.language);
     final ctrlActive = widget.session.ctrlModifier;
     final altActive = widget.session.altModifier;
 
@@ -274,7 +240,7 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     _KeyChip(
                       label: '^U',
                       tooltip: strings.isRu ? 'Стереть строку (^U)' : 'Erase line (^U)',
-                      onTap: () => _sendDirect('\x15'),
+                      onTap: () => widget.session.sendCtrlChar('U'),
                     ),
                     _KeyChip(
                       icon: Icons.backspace_outlined,
@@ -284,12 +250,12 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     _KeyChip(
                       label: '^D',
                       tooltip: 'EOF / Выход',
-                      onTap: () => _sendDirect('\x04'),
+                      onTap: () => widget.session.sendCtrlChar('D'),
                     ),
                     _KeyChip(
                       label: '^Z',
                       tooltip: strings.isRu ? 'Фон (SIGTSTP)' : 'Background (SIGTSTP)',
-                      onTap: () => _sendDirect('\x1a'),
+                      onTap: () => widget.session.sendCtrlChar('Z'),
                     ),
                     if (widget.onToggleFiles != null) ...[
                       const _Divider(),
@@ -321,24 +287,14 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     onTap: () => _sendKey(TerminalKey.escape),
                   ),
                   _KeyChip(
-                    label: widget.session.pendingCtrlChar != null
-                        ? 'Ctrl^${widget.session.pendingCtrlChar}'
-                        : 'CTRL',
-                    active: ctrlActive || widget.session.pendingCtrlChar != null,
-                    tooltip: widget.session.pendingCtrlChar != null
-                        ? (strings.isRu
-                            ? 'Ctrl^${widget.session.pendingCtrlChar} (нажмите Return для отправки)'
-                            : 'Ctrl^${widget.session.pendingCtrlChar} (press Return to send)')
-                        : (strings.isRu
-                            ? 'CTRL (затем английскую букву и Return)'
-                            : 'CTRL (then English key and Return)'),
+                    label: 'CTRL',
+                    active: ctrlActive,
+                    tooltip: strings.isRu
+                        ? 'CTRL (нажмите, затем нужную клавишу)'
+                        : 'CTRL (tap, then press key)',
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      if (widget.session.pendingCtrlChar != null) {
-                        widget.session.sendPendingCtrl();
-                      } else {
-                        widget.session.toggleCtrl();
-                      }
+                      widget.session.toggleCtrl();
                       _refocus();
                     },
                     onLongPress: () => _showCtrlMenu(context),

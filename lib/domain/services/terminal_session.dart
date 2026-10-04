@@ -78,18 +78,10 @@ class TerminalSession extends ChangeNotifier {
   bool altModifier = false;
   VoidCallback? onModifiersChanged;
 
-  /// Ожидающий отправки символ комбинации Ctrl (например, 'C' для Ctrl^C).
-  /// Не отправляется сразу; отображается на панели как Ctrl^C и отправляется по нажатию Return.
-  String? pendingCtrlChar;
-
   /// Текст текущего ввода пользователя без prompt и вывода shell.
   String clientTypedCommand = '';
 
   void toggleCtrl() {
-    if (pendingCtrlChar != null) {
-      clearPendingCtrl();
-      return;
-    }
     ctrlModifier = !ctrlModifier;
     onModifiersChanged?.call();
   }
@@ -99,38 +91,21 @@ class TerminalSession extends ChangeNotifier {
     onModifiersChanged?.call();
   }
 
-  void setPendingCtrl(String char) {
-    pendingCtrlChar = char.toUpperCase();
-    onModifiersChanged?.call();
-  }
-
-  void clearPendingCtrl() {
-    pendingCtrlChar = null;
-    ctrlModifier = false;
-    onModifiersChanged?.call();
-  }
-
-  void clearPendingCharOnly() {
-    pendingCtrlChar = null;
-    onModifiersChanged?.call();
-  }
-
   void resetModifiers() {
-    if (ctrlModifier || altModifier || pendingCtrlChar != null) {
+    if (ctrlModifier || altModifier) {
       ctrlModifier = false;
       altModifier = false;
-      pendingCtrlChar = null;
       onModifiersChanged?.call();
     }
   }
 
-  /// Отправляет ожидающую комбинацию Ctrl (например, \x03 для Ctrl^C)
-  /// без отправки Enter / перевода строки.
-  bool sendPendingCtrl() {
-    final char = pendingCtrlChar;
-    if (char == null || char.isEmpty) return false;
+  /// Отправляет комбинацию Ctrl (например, \x03 для Ctrl+C) сразу в терминал/shell.
+  void sendCtrlChar(String char) {
+    ctrlModifier = false;
+    onModifiersChanged?.call();
 
-    final code = char.codeUnitAt(0);
+    final mapped = mapToCtrlChar(char) ?? char.toUpperCase();
+    final code = mapped.codeUnitAt(0);
     int? byte;
     if (code >= 65 && code <= 90) {
       byte = code - 64;
@@ -150,15 +125,15 @@ class TerminalSession extends ChangeNotifier {
       byte = 0; // ^@ or space
     }
 
+    // Отображаем Ctrl^<Char> непосредственно в строке ввода без лишнего перевода строки
+    terminal.write('Ctrl^$mapped');
+
     if (byte != null) {
       _updateClientTypedCommand(String.fromCharCode(byte));
-      _shell?.write(Uint8List.fromList([byte]));
+      if (_shell != null) {
+        _shell?.write(Uint8List.fromList([byte]));
+      }
     }
-
-    pendingCtrlChar = null;
-    ctrlModifier = false;
-    onModifiersChanged?.call();
-    return true;
   }
 
   /// Преобразует входную строку или клавишу в символ комбинации Ctrl (A-Z и др.).
@@ -284,41 +259,24 @@ class TerminalSession extends ChangeNotifier {
       _shell = shell;
 
       terminal.onOutput = (data) {
-        // 1. Если уже зафиксирована комбинация Ctrl (например Ctrl^C):
-        // Ожидаем нажатия Return / Enter для отправки.
-        // При нажатии Return отправляем ТОЛЬКО байт Ctrl без Enter (\r, \n).
-        if (pendingCtrlChar != null) {
-          if (data.contains('\r') || data.contains('\n')) {
-            sendPendingCtrl();
-            return;
-          }
-          if (data == '\x7f' || data == '\x08') {
-            clearPendingCharOnly();
-            return;
-          }
-          if (data == '\x1b') {
-            clearPendingCtrl();
-            return;
-          }
-          final nextMapped = mapToCtrlChar(data);
-          if (nextMapped != null) {
-            setPendingCtrl(nextMapped);
-            return;
-          }
-        }
-
-        // 2. Если нажат модификатор CTRL (но буква еще не была выбрана):
         if (ctrlModifier && data.isNotEmpty) {
-          if (data == '\x7f' || data == '\x08' || data == '\x1b') {
-            clearPendingCtrl();
+          if (data == '\x1b') {
+            resetModifiers();
             return;
           }
           final mapped = mapToCtrlChar(data);
           if (mapped != null) {
-            // Запоминаем символ и отображаем Ctrl^<символ> на панели.
-            // НЕ отправляем сразу в shell, ждем Return / Enter!
-            setPendingCtrl(mapped);
+            sendCtrlChar(mapped);
             return;
+          }
+        }
+
+        // Если пришёл управляющий символ Ctrl (1..26 кроме tab, newline, return):
+        if (data.length == 1) {
+          final cu = data.codeUnitAt(0);
+          if (cu >= 1 && cu <= 26 && cu != 9 && cu != 10 && cu != 13) {
+            final char = String.fromCharCode(cu + 64);
+            terminal.write('Ctrl^$char');
           }
         }
 

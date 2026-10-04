@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../infra/platform/desktop_env.dart';
+
 /// Что делает правый клик (и тап двумя пальцами по тачпаду) в терминале.
 enum RightClickAction {
   /// Контекстное меню.
@@ -177,7 +179,7 @@ class AppSettings {
         'appIcon': appIcon,
         'showAccessoryBar': showAccessoryBar,
         'incognitoKeyboard': incognitoKeyboard,
-        'language': language.name,
+        'language': DesktopEnv.isMobile ? 'auto' : language.name,
       };
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -212,9 +214,11 @@ class AppSettings {
         appIcon: json['appIcon'] as String? ?? 'default',
         showAccessoryBar: json['showAccessoryBar'] as bool? ?? true,
         incognitoKeyboard: json['incognitoKeyboard'] as bool? ?? false,
-        language: AppLanguage.values.firstWhere(
-          (l) => l.name == json['language'],
-          orElse: () => AppLanguage.auto,
-        ),
+        language: DesktopEnv.isMobile
+            ? AppLanguage.auto
+            : AppLanguage.values.firstWhere(
+                (l) => l.name == json['language'],
+                orElse: () => AppLanguage.auto,
+              ),
       );
 }
