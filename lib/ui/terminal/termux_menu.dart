@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -16,14 +17,17 @@ class TermuxStrings {
     AppLanguage language = AppLanguage.auto,
   ]) {
     if (language == AppLanguage.ru) return const TermuxStrings(isRussian: true);
-    if (language == AppLanguage.en) return const TermuxStrings(isRussian: false);
+    if (language == AppLanguage.en)
+      return const TermuxStrings(isRussian: false);
 
-    final loc = Localizations.maybeLocaleOf(context) ??
+    final loc =
+        Localizations.maybeLocaleOf(context) ??
         (ui.PlatformDispatcher.instance.locales.isNotEmpty
             ? ui.PlatformDispatcher.instance.locales.first
             : ui.PlatformDispatcher.instance.locale);
     final code = loc.languageCode.toLowerCase();
-    final isRu = code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk');
+    final isRu =
+        code.startsWith('ru') || code.startsWith('be') || code.startsWith('uk');
 
     return TermuxStrings(isRussian: isRu);
   }
@@ -48,8 +52,7 @@ class TermuxStrings {
   String get emptyArea => isRussian ? 'Терминал' : 'Terminal';
   String get selectedText => isRussian ? 'Текст' : 'Text';
 
-  String charCount(int count) =>
-      isRussian ? '$count симв.' : '$count chars';
+  String charCount(int count) => isRussian ? '$count симв.' : '$count chars';
 
   String copiedToast(int count) => isRussian
       ? 'Скопировано в буфер ($count симв.)'
@@ -68,8 +71,7 @@ class TermuxStrings {
       ? 'Отправлен сигнал прерывания (^C)'
       : 'Interrupt signal sent (^C)';
 
-  String get clearToast =>
-      isRussian ? 'Экран очищен' : 'Screen cleared';
+  String get clearToast => isRussian ? 'Экран очищен' : 'Screen cleared';
 
   String multilineTitle(int count) =>
       isRussian ? 'Вставить $count строк?' : 'Paste $count lines?';
@@ -80,8 +82,7 @@ class TermuxStrings {
 
   String get cancel => isRussian ? 'Отмена' : 'Cancel';
 
-  String get pasteSingleLine =>
-      isRussian ? 'Одной строкой' : 'Single line';
+  String get pasteSingleLine => isRussian ? 'Одной строкой' : 'Single line';
 
   String get pasteConfirm => isRussian ? 'Вставить' : 'Paste';
 }
@@ -154,31 +155,21 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final menuWidth = _expanded ? 320.0 : 300.0;
+        final maxMenuWidth = math.max(0.0, constraints.maxWidth - 20);
+        final menuWidth = math.min(_expanded ? 320.0 : 300.0, maxMenuWidth);
         final halfWidth = menuWidth / 2;
 
         var left = widget.position.dx - halfWidth;
-
-        if (left < 10) {
-          left = 10;
-        }
-
-        if (left + menuWidth > constraints.maxWidth - 10) {
-          left = constraints.maxWidth - menuWidth - 10;
-        }
+        final maxLeft = math.max(10.0, constraints.maxWidth - menuWidth - 10);
+        left = left.clamp(10.0, maxLeft).toDouble();
 
         final estimatedHeight = _expanded ? 210.0 : 110.0;
-
-        var top = widget.position.dy - estimatedHeight - 16;
-
-        if (top < 10) {
-          top = widget.position.dy + 20;
-        }
-
-        if (top + estimatedHeight > constraints.maxHeight - 10) {
-          top = (constraints.maxHeight - estimatedHeight - 10)
-              .clamp(10, double.infinity);
-        }
+        final top = (widget.position.dy - estimatedHeight - 8)
+            .clamp(
+              10.0,
+              math.max(10.0, constraints.maxHeight - estimatedHeight - 10),
+            )
+            .toDouble();
 
         return Stack(
           children: [
@@ -242,7 +233,7 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                               child: Text(
                                 hasValidSelection
                                     ? '${strings.selectedText} '
-                                        '(${strings.charCount(widget.selectedCharCount)})'
+                                          '(${strings.charCount(widget.selectedCharCount)})'
                                     : strings.terminal,
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
@@ -276,31 +267,39 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _ActionButton(
-                              icon: Icons.copy_rounded,
-                              label: strings.copy,
-                              onTap: widget.onCopy,
+                            Expanded(
+                              child: _ActionButton(
+                                icon: Icons.copy_rounded,
+                                label: strings.copy,
+                                onTap: widget.onCopy,
+                              ),
                             ),
-                            _ActionButton(
-                              icon: Icons.paste_rounded,
-                              label: strings.paste,
-                              onTap: widget.onPaste,
+                            Expanded(
+                              child: _ActionButton(
+                                icon: Icons.paste_rounded,
+                                label: strings.paste,
+                                onTap: widget.onPaste,
+                              ),
                             ),
-                            _ActionButton(
-                              icon: Icons.content_cut_rounded,
-                              label: strings.cut,
-                              onTap: widget.onCut,
+                            Expanded(
+                              child: _ActionButton(
+                                icon: Icons.content_cut_rounded,
+                                label: strings.cut,
+                                onTap: widget.onCut,
+                              ),
                             ),
-                            _ActionButton(
-                              icon: _expanded
-                                  ? Icons.expand_less_rounded
-                                  : Icons.more_horiz_rounded,
-                              label: strings.more,
-                              onTap: () {
-                                setState(() {
-                                  _expanded = !_expanded;
-                                });
-                              },
+                            Expanded(
+                              child: _ActionButton(
+                                icon: _expanded
+                                    ? Icons.expand_less_rounded
+                                    : Icons.more_horiz_rounded,
+                                label: strings.more,
+                                onTap: () {
+                                  setState(() {
+                                    _expanded = !_expanded;
+                                  });
+                                },
+                              ),
                             ),
                           ],
                         ),
@@ -309,9 +308,7 @@ class _TermuxFloatingMenuState extends State<TermuxFloatingMenu> {
                       if (_expanded) ...[
                         Divider(
                           height: 1,
-                          color: scheme.outlineVariant.withValues(
-                            alpha: 0.25,
-                          ),
+                          color: scheme.outlineVariant.withValues(alpha: 0.25),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(
@@ -391,32 +388,28 @@ class _ActionButton extends StatelessWidget {
         HapticFeedback.selectionClick();
         onTap();
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 7,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: color,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: color,
+      child: SizedBox(
+        width: double.infinity,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -445,25 +438,15 @@ class _SecondaryButton extends StatelessWidget {
         onTap();
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: scheme.primary,
-            ),
+            Icon(icon, size: 16, color: scheme.primary),
             const SizedBox(width: 5),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurface,
-              ),
+              style: TextStyle(fontSize: 12, color: scheme.onSurface),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               softWrap: false,

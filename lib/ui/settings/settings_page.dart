@@ -48,34 +48,65 @@ class SettingsPage extends ConsumerWidget {
                   children: [
                     _Row(
                       title: strings.themeTitle,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<ThemeMode>(
-                          showSelectedIcon: false,
-                          style: const ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          segments: [
-                            ButtonSegment(
-                              value: ThemeMode.system,
-                              label: Text(strings.themeSystem, maxLines: 1, softWrap: false),
-                              icon: const Icon(Icons.brightness_auto, size: 18),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minWidth: constraints.maxWidth,
+                                ),
+                                child: SegmentedButton<ThemeMode>(
+                                  showSelectedIcon: false,
+                                  style: const ButtonStyle(
+                                    visualDensity: VisualDensity.compact,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  segments: [
+                                    ButtonSegment(
+                                      value: ThemeMode.system,
+                                      label: Text(
+                                        strings.themeSystem,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.brightness_auto,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    ButtonSegment(
+                                      value: ThemeMode.light,
+                                      label: Text(
+                                        strings.themeLight,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.light_mode_outlined,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    ButtonSegment(
+                                      value: ThemeMode.dark,
+                                      label: Text(
+                                        strings.themeDark,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.dark_mode_outlined,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ],
+                                  selected: {s.themeMode},
+                                  onSelectionChanged: (v) =>
+                                      ctrl.setThemeMode(v.first),
+                                ),
+                              ),
                             ),
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              label: Text(strings.themeLight, maxLines: 1, softWrap: false),
-                              icon: const Icon(Icons.light_mode_outlined, size: 18),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              label: Text(strings.themeDark, maxLines: 1, softWrap: false),
-                              icon: const Icon(Icons.dark_mode_outlined, size: 18),
-                            ),
-                          ],
-                          selected: {s.themeMode},
-                          onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -99,7 +130,9 @@ class SettingsPage extends ConsumerWidget {
                       }),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AppIconPickerPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const AppIconPickerPage(),
+                        ),
                       ),
                     ),
                   ],
@@ -130,14 +163,41 @@ class SettingsPage extends ConsumerWidget {
                         underline: const SizedBox.shrink(),
                         borderRadius: BorderRadius.circular(12),
                         items: [
-                          DropdownMenuItem(value: 0, child: Text(strings.keepAliveOff)),
-                          DropdownMenuItem(value: 15, child: Text(strings.keepAliveSecondsVal(15))),
-                          DropdownMenuItem(value: 30, child: Text(strings.keepAliveSecondsVal(30))),
-                          DropdownMenuItem(value: 60, child: Text(strings.keepAliveRecom)),
-                          DropdownMenuItem(value: 120, child: Text(strings.isRu ? '120 сек (2 мин)' : '120 sec (2 min)')),
-                          DropdownMenuItem(value: 300, child: Text(strings.isRu ? '300 сек (5 мин)' : '300 sec (5 min)')),
+                          DropdownMenuItem(
+                            value: 0,
+                            child: Text(strings.keepAliveOff),
+                          ),
+                          DropdownMenuItem(
+                            value: 15,
+                            child: Text(strings.keepAliveSecondsVal(15)),
+                          ),
+                          DropdownMenuItem(
+                            value: 30,
+                            child: Text(strings.keepAliveSecondsVal(30)),
+                          ),
+                          DropdownMenuItem(
+                            value: 60,
+                            child: Text(strings.keepAliveRecom),
+                          ),
+                          DropdownMenuItem(
+                            value: 120,
+                            child: Text(
+                              strings.isRu
+                                  ? '120 сек (2 мин)'
+                                  : '120 sec (2 min)',
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 300,
+                            child: Text(
+                              strings.isRu
+                                  ? '300 сек (5 мин)'
+                                  : '300 sec (5 min)',
+                            ),
+                          ),
                         ],
-                        onChanged: (v) => v != null ? ctrl.setKeepAliveSeconds(v) : null,
+                        onChanged: (v) =>
+                            v != null ? ctrl.setKeepAliveSeconds(v) : null,
                       ),
                     ),
                   ],
@@ -157,15 +217,19 @@ class SettingsPage extends ConsumerWidget {
                                 min: 9,
                                 max: 24,
                                 divisions: 15,
-                                value: s.terminalFontSize.clamp(9, 24).toDouble(),
+                                value: s.terminalFontSize
+                                    .clamp(9, 24)
+                                    .toDouble(),
                                 label: s.terminalFontSize.round().toString(),
                                 onChanged: ctrl.setTerminalFontSize,
                               ),
                             ),
                             SizedBox(
                               width: 32,
-                              child: Text('${s.terminalFontSize.round()}',
-                                  textAlign: TextAlign.end),
+                              child: Text(
+                                '${s.terminalFontSize.round()}',
+                                textAlign: TextAlign.end,
+                              ),
                             ),
                           ],
                         ),
@@ -180,8 +244,11 @@ class SettingsPage extends ConsumerWidget {
                       ),
                       child: Text(
                         'root@server:~\$ htop   # font preview',
-                        style: monoStyle(context,
-                            size: s.terminalFontSize, color: scheme.onSurface),
+                        style: monoStyle(
+                          context,
+                          size: s.terminalFontSize,
+                          color: scheme.onSurface,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -189,9 +256,11 @@ class SettingsPage extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.content_copy),
                       title: Text(strings.copyOnSelectTitle),
-                      subtitle: Text(DesktopEnv.isDesktop
-                          ? strings.copyOnSelectDesktopDesc
-                          : strings.copyOnSelectMobileDesc),
+                      subtitle: Text(
+                        DesktopEnv.isDesktop
+                            ? strings.copyOnSelectDesktopDesc
+                            : strings.copyOnSelectMobileDesc,
+                      ),
                       value: s.copyOnSelect,
                       onChanged: ctrl.setCopyOnSelect,
                     ),
@@ -226,49 +295,77 @@ class SettingsPage extends ConsumerWidget {
                               child: Text(strings.languageEn),
                             ),
                           ],
-                          onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
+                          onChanged: (v) =>
+                              v != null ? ctrl.setLanguage(v) : null,
                         ),
                       ),
                       const SizedBox(height: 8),
                     ],
                     const SizedBox(height: 12),
                     Text(
-                      DesktopEnv.isMobile ? strings.rightClickMobileTitle : strings.rightClickDesktopTitle,
+                      DesktopEnv.isMobile
+                          ? strings.rightClickMobileTitle
+                          : strings.rightClickDesktopTitle,
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
-                    SegmentedButton<RightClickAction>(
-                      showSelectedIcon: false,
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: SegmentedButton<RightClickAction>(
+                            showSelectedIcon: false,
+                            style: const ButtonStyle(
+                              visualDensity: VisualDensity.compact,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            segments: [
+                              ButtonSegment(
+                                value: RightClickAction.menu,
+                                icon: const Icon(Icons.menu_open, size: 18),
+                                label: Text(
+                                  strings.rightClickMenu,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
+                              ButtonSegment(
+                                value: RightClickAction.paste,
+                                icon: const Icon(Icons.content_paste, size: 18),
+                                label: Text(
+                                  strings.rightClickPaste,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
+                              ButtonSegment(
+                                value: RightClickAction.smart,
+                                icon: const Icon(Icons.auto_awesome, size: 18),
+                                label: Text(
+                                  strings.rightClickSmart,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
+                            ],
+                            selected: {s.rightClick},
+                            onSelectionChanged: (v) =>
+                                ctrl.setRightClick(v.first),
+                          ),
+                        ),
                       ),
-                      segments: [
-                        ButtonSegment(
-                          value: RightClickAction.menu,
-                          icon: const Icon(Icons.menu_open, size: 18),
-                          label: Text(strings.rightClickMenu, maxLines: 1, softWrap: false),
-                        ),
-                        ButtonSegment(
-                          value: RightClickAction.paste,
-                          icon: const Icon(Icons.content_paste, size: 18),
-                          label: Text(strings.rightClickPaste, maxLines: 1, softWrap: false),
-                        ),
-                        ButtonSegment(
-                          value: RightClickAction.smart,
-                          icon: const Icon(Icons.auto_awesome, size: 18),
-                          label: Text(strings.rightClickSmart, maxLines: 1, softWrap: false),
-                        ),
-                      ],
-                      selected: {s.rightClick},
-                      onSelectionChanged: (v) => ctrl.setRightClick(v.first),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       DesktopEnv.isDesktop
                           ? '${_rightClickHint(s.rightClick, strings)} ${strings.shiftRightClickNote}'
                           : _rightClickHint(s.rightClick, strings),
-                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     if (DesktopEnv.isDesktop) ...[
                       const SizedBox(height: 8),
@@ -283,8 +380,14 @@ class SettingsPage extends ConsumerWidget {
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         secondary: const Icon(Icons.mouse_outlined),
-                        title: Text(strings.isRu ? 'Средняя кнопка мыши вставляет' : 'Middle click pastes'),
-                        subtitle: Text(strings.isRu ? 'Как в Linux' : 'Linux terminal style'),
+                        title: Text(
+                          strings.isRu
+                              ? 'Средняя кнопка мыши вставляет'
+                              : 'Middle click pastes',
+                        ),
+                        subtitle: Text(
+                          strings.isRu ? 'Как в Linux' : 'Linux terminal style',
+                        ),
                         value: s.middleClickPaste,
                         onChanged: ctrl.setMiddleClickPaste,
                       ),
@@ -307,10 +410,15 @@ class SettingsPage extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: Text(strings.downloadsDirTitle),
                       subtitle: Text(
-                          s.downloadsDir.isEmpty
-                              ? '${LocalFiles.defaultDownloadsDir()} (${strings.isRu ? 'по умолчанию' : 'default'})'
-                              : s.downloadsDir,
-                          style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
+                        s.downloadsDir.isEmpty
+                            ? '${LocalFiles.defaultDownloadsDir()} (${strings.isRu ? 'по умолчанию' : 'default'})'
+                            : s.downloadsDir,
+                        style: monoStyle(
+                          context,
+                          size: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                       trailing: Wrap(
                         spacing: 4,
                         children: [
@@ -333,16 +441,34 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(strings.isRu ? 'Папка с данными' : 'Config folder'),
-                      subtitle: Text(AppPaths.configDir.path,
-                          style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
+                      title: Text(
+                        strings.isRu ? 'Папка с данными' : 'Config folder',
+                      ),
+                      subtitle: Text(
+                        AppPaths.configDir.path,
+                        style: monoStyle(
+                          context,
+                          size: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                       trailing: IconButton(
-                        tooltip: strings.isRu ? 'Скопировать путь' : 'Copy path',
+                        tooltip: strings.isRu
+                            ? 'Скопировать путь'
+                            : 'Copy path',
                         icon: const Icon(Icons.copy),
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: AppPaths.configDir.path));
+                          Clipboard.setData(
+                            ClipboardData(text: AppPaths.configDir.path),
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(strings.isRu ? 'Путь скопирован' : 'Path copied')),
+                            SnackBar(
+                              content: Text(
+                                strings.isRu
+                                    ? 'Путь скопирован'
+                                    : 'Path copied',
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -353,11 +479,17 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.info_outline,
                   title: strings.aboutApp,
                   children: [
-                    Text('vysh $appVersion', style: theme.textTheme.titleMedium),
+                    Text(
+                      'vysh $appVersion',
+                      style: theme.textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
-                    Text(strings.appDescription,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    Text(
+                      strings.appDescription,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -370,7 +502,11 @@ class SettingsPage extends ConsumerWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.icon, required this.title, required this.children});
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
 
   final IconData icon;
   final String title;
@@ -427,7 +563,10 @@ class _Row extends StatelessWidget {
       spacing: 16,
       runSpacing: 8,
       children: [
-        SizedBox(width: 140, child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
+        SizedBox(
+          width: 140,
+          child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+        ),
         child,
       ],
     );
@@ -435,7 +574,7 @@ class _Row extends StatelessWidget {
 }
 
 String _rightClickHint(RightClickAction a, AppStrings strings) => switch (a) {
-      RightClickAction.menu => strings.rightClickHintMenu,
-      RightClickAction.paste => strings.rightClickHintPaste,
-      RightClickAction.smart => strings.rightClickHintSmart,
-    };
+  RightClickAction.menu => strings.rightClickHintMenu,
+  RightClickAction.paste => strings.rightClickHintPaste,
+  RightClickAction.smart => strings.rightClickHintSmart,
+};

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -518,7 +519,9 @@ class _SessionViewState extends ConsumerState<SessionView>
     final cellOffset = renderTerminal.getOffset(movingCell);
     final textPoint = cellOffset + Offset(0, renderTerminal.cellSize.height);
 
-    final touchInTerminal = renderTerminal.globalToLocal(details.globalPosition);
+    final touchInTerminal = renderTerminal.globalToLocal(
+      details.globalPosition,
+    );
     _dragTouchDeltaToTextPoint = touchInTerminal - textPoint;
   }
 
@@ -542,16 +545,27 @@ class _SessionViewState extends ConsumerState<SessionView>
     if (stackBox != null && _scrollController.hasClients) {
       final localInStack = stackBox.globalToLocal(details.globalPosition);
       if (localInStack.dy < 40 && _scrollController.offset > 0) {
-        _scrollController.jumpTo((_scrollController.offset - 20)
-            .clamp(0.0, _scrollController.position.maxScrollExtent));
+        _scrollController.jumpTo(
+          (_scrollController.offset - 20).clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          ),
+        );
       } else if (localInStack.dy > stackBox.size.height - 40 &&
-          _scrollController.offset < _scrollController.position.maxScrollExtent) {
-        _scrollController.jumpTo((_scrollController.offset + 20)
-            .clamp(0.0, _scrollController.position.maxScrollExtent));
+          _scrollController.offset <
+              _scrollController.position.maxScrollExtent) {
+        _scrollController.jumpTo(
+          (_scrollController.offset + 20).clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          ),
+        );
       }
     }
 
-    final touchInTerminal = renderTerminal.globalToLocal(details.globalPosition);
+    final touchInTerminal = renderTerminal.globalToLocal(
+      details.globalPosition,
+    );
     final targetPointInTerminal = touchInTerminal - delta;
 
     final cell = renderTerminal.cellSize;
@@ -687,33 +701,35 @@ class _SessionViewState extends ConsumerState<SessionView>
         gestures: <Type, GestureRecognizerFactory>{
           PanGestureRecognizer:
               GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
-            () => PanGestureRecognizer(
-              debugOwner: this,
-              supportedDevices: <PointerDeviceKind>{
-                PointerDeviceKind.touch,
-                PointerDeviceKind.stylus,
-                PointerDeviceKind.unknown,
-                PointerDeviceKind.mouse,
-              },
-            ),
-            (PanGestureRecognizer instance) {
-              instance
-                ..dragStartBehavior = DragStartBehavior.down
-                ..gestureSettings = const DeviceGestureSettings(touchSlop: 1.0)
-                ..onStart = (details) {
-                  _onHandlePanStart(details, start: start);
-                }
-                ..onUpdate = (details) {
-                  _onHandlePanUpdate(details, start: start);
-                }
-                ..onEnd = (details) {
-                  _onHandlePanEnd(details, start: start);
-                }
-                ..onCancel = () {
-                  _onHandlePanCancel(start: start);
-                };
-            },
-          ),
+                () => PanGestureRecognizer(
+                  debugOwner: this,
+                  supportedDevices: <PointerDeviceKind>{
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.unknown,
+                    PointerDeviceKind.mouse,
+                  },
+                ),
+                (PanGestureRecognizer instance) {
+                  instance
+                    ..dragStartBehavior = DragStartBehavior.down
+                    ..gestureSettings = const DeviceGestureSettings(
+                      touchSlop: 1.0,
+                    )
+                    ..onStart = (details) {
+                      _onHandlePanStart(details, start: start);
+                    }
+                    ..onUpdate = (details) {
+                      _onHandlePanUpdate(details, start: start);
+                    }
+                    ..onEnd = (details) {
+                      _onHandlePanEnd(details, start: start);
+                    }
+                    ..onCancel = () {
+                      _onHandlePanCancel(start: start);
+                    };
+                },
+              ),
         },
         child: Padding(
           padding: const EdgeInsets.all(pad),
@@ -727,9 +743,68 @@ class _SessionViewState extends ConsumerState<SessionView>
     );
   }
 
+  Offset? _selectionMenuAnchor() {
+    final selection = _controller.selection;
+    final renderTerminal = _renderTerminal;
+    final terminal = _terminal;
+    final stackBox =
+        _terminalStackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (selection == null ||
+        selection.isCollapsed ||
+        renderTerminal == null ||
+        terminal == null ||
+        stackBox == null ||
+        !stackBox.hasSize) {
+      return null;
+    }
+
+    final range = selection.normalized;
+    final begin = range.begin;
+    final end = range.end;
+    if (begin.y < 0 ||
+        end.y < 0 ||
+        begin.y >= terminal.buffer.lines.length ||
+        end.y >= terminal.buffer.lines.length) {
+      return null;
+    }
+
+    Offset markerTop(CellOffset cellOffset, {required bool start}) {
+      final cellSize = renderTerminal.cellSize;
+      final handleType = start
+          ? TextSelectionHandleType.left
+          : TextSelectionHandleType.right;
+      final textPoint =
+          renderTerminal.getOffset(cellOffset) + Offset(0, cellSize.height);
+      final anchor = MaterialTextSelectionControls().getHandleAnchor(
+        handleType,
+        cellSize.height,
+      );
+      const pad = 13.0;
+      final inStack = stackBox.globalToLocal(
+        renderTerminal.localToGlobal(textPoint),
+      );
+      return Offset(inStack.dx - anchor.dx - pad, inStack.dy - anchor.dy - pad);
+    }
+
+    final startTop = markerTop(begin, start: true);
+    final endTop = markerTop(end, start: false);
+    final startX = stackBox
+        .globalToLocal(
+          renderTerminal.localToGlobal(renderTerminal.getOffset(begin)),
+        )
+        .dx;
+    final endX = stackBox
+        .globalToLocal(
+          renderTerminal.localToGlobal(renderTerminal.getOffset(end)),
+        )
+        .dx;
+
+    return Offset((startX + endX) / 2, math.min(startTop.dy, endTop.dy));
+  }
+
   void _showTermuxMenu(Offset position) {
     setState(() {
-      _termuxMenuPosition = position;
+      _termuxMenuPosition = _selectionMenuAnchor() ?? position;
     });
   }
 
