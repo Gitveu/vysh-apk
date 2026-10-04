@@ -125,9 +125,6 @@ class TerminalSession extends ChangeNotifier {
       byte = 0; // ^@ or space
     }
 
-    // Отображаем Ctrl^<Char> непосредственно в строке ввода без лишнего перевода строки
-    terminal.write('Ctrl^$mapped');
-
     if (byte != null) {
       _updateClientTypedCommand(String.fromCharCode(byte));
       if (_shell != null) {
@@ -268,15 +265,6 @@ class TerminalSession extends ChangeNotifier {
           if (mapped != null) {
             sendCtrlChar(mapped);
             return;
-          }
-        }
-
-        // Если пришёл управляющий символ Ctrl (1..26 кроме tab, newline, return):
-        if (data.length == 1) {
-          final cu = data.codeUnitAt(0);
-          if (cu >= 1 && cu <= 26 && cu != 9 && cu != 10 && cu != 13) {
-            final char = String.fromCharCode(cu + 64);
-            terminal.write('Ctrl^$char');
           }
         }
 

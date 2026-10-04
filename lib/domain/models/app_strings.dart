@@ -139,10 +139,6 @@ class AppStrings {
   String get accessoryBarDesc => isRu
       ? 'Однострочная панель Termux над клавиатурой на смартфонах.'
       : 'Single-row Termux style toolbar above the mobile keyboard.';
-  String get incognitoKeyboardTitle => isRu ? 'Режим инкогнито клавиатуры' : 'Incognito keyboard mode';
-  String get incognitoKeyboardDesc => isRu
-      ? 'Скрывать ввод от подсказок клавиатуры (отключает историю и обучение Gboard)'
-      : 'Hide input from keyboard suggestions (disables Gboard learning and history)';
   String get languageTitle => isRu ? 'Язык интерфейса' : 'Interface language';
   String get languageAuto => isRu ? 'Авто (Android / система)' : 'Auto (System / OS)';
   String get languageRu => isRu ? 'Русский (Russian)' : 'Russian (Русский)';

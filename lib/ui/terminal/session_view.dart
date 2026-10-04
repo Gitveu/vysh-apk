@@ -471,14 +471,14 @@ class _SessionViewState extends ConsumerState<SessionView>
   }
 
   void _reset() {
-    final terminal = _terminal;
+    final session = ref.read(tabsProvider.notifier).sessionOf(widget.tab.id);
 
     final strings = TermuxStrings.of(
       context,
       ref.read(settingsProvider).language,
     );
 
-    terminal?.keyInput(TerminalKey.keyC, ctrl: true);
+    session?.sendCtrlChar('C');
 
     _controller.clearSelection();
     _showToast(strings.resetToast);
@@ -946,9 +946,7 @@ class _SessionViewState extends ConsumerState<SessionView>
             fontFamilyFallback: monoFontFallback,
           ),
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          keyboardType: settings.incognitoKeyboard
-              ? TextInputType.visiblePassword
-              : TextInputType.text,
+          keyboardType: TextInputType.text,
           onKeyEvent: (focusNode, event) {
             if (event is KeyDownEvent) {
               if (session.ctrlModifier) {
