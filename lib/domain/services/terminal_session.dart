@@ -78,10 +78,18 @@ class TerminalSession extends ChangeNotifier {
   bool altModifier = false;
   VoidCallback? onModifiersChanged;
 
+  /// Ожидающий отправки символ комбинации Ctrl (например, 'C' для Ctrl^C).
+  /// Не отправляется сразу; отображается на панели как Ctrl^C и отправляется по нажатию Return.
+  String? pendingCtrlChar;
+
   /// Текст текущего ввода пользователя без prompt и вывода shell.
   String clientTypedCommand = '';
 
   void toggleCtrl() {
+    if (pendingCtrlChar != null) {
+      clearPendingCtrl();
+      return;
+    }
     ctrlModifier = !ctrlModifier;
     onModifiersChanged?.call();
   }
@@ -91,12 +99,114 @@ class TerminalSession extends ChangeNotifier {
     onModifiersChanged?.call();
   }
 
+  void setPendingCtrl(String char) {
+    pendingCtrlChar = char.toUpperCase();
+    onModifiersChanged?.call();
+  }
+
+  void clearPendingCtrl() {
+    pendingCtrlChar = null;
+    ctrlModifier = false;
+    onModifiersChanged?.call();
+  }
+
+  void clearPendingCharOnly() {
+    pendingCtrlChar = null;
+    onModifiersChanged?.call();
+  }
+
   void resetModifiers() {
-    if (ctrlModifier || altModifier) {
+    if (ctrlModifier || altModifier || pendingCtrlChar != null) {
       ctrlModifier = false;
       altModifier = false;
+      pendingCtrlChar = null;
       onModifiersChanged?.call();
     }
+  }
+
+  /// Отправляет ожидающую комбинацию Ctrl (например, \x03 для Ctrl^C)
+  /// без отправки Enter / перевода строки.
+  bool sendPendingCtrl() {
+    final char = pendingCtrlChar;
+    if (char == null || char.isEmpty) return false;
+
+    final code = char.codeUnitAt(0);
+    int? byte;
+    if (code >= 65 && code <= 90) {
+      byte = code - 64;
+    } else if (code >= 97 && code <= 122) {
+      byte = code - 96;
+    } else if (code == 91) {
+      byte = 27; // ESC / ^[
+    } else if (code == 92) {
+      byte = 28; // ^\
+    } else if (code == 93) {
+      byte = 29; // ^]
+    } else if (code == 94) {
+      byte = 30; // ^^
+    } else if (code == 95) {
+      byte = 31; // ^_
+    } else if (code == 32 || code == 64) {
+      byte = 0; // ^@ or space
+    }
+
+    if (byte != null) {
+      _updateClientTypedCommand(String.fromCharCode(byte));
+      _shell?.write(Uint8List.fromList([byte]));
+    }
+
+    pendingCtrlChar = null;
+    ctrlModifier = false;
+    onModifiersChanged?.call();
+    return true;
+  }
+
+  /// Преобразует входную строку или клавишу в символ комбинации Ctrl (A-Z и др.).
+  /// Поддерживает английские буквы и соответствующие клавиши русской раскладки QWERTY.
+  static String? mapToCtrlChar(String input) {
+    if (input.isEmpty) return null;
+    final ch = input[0];
+    final code = ch.codeUnitAt(0);
+    if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+      return ch.toUpperCase();
+    }
+    const cyrillicToEn = <String, String>{
+      'ф': 'A', 'Ф': 'A',
+      'и': 'B', 'И': 'B',
+      'с': 'C', 'С': 'C',
+      'в': 'D', 'В': 'D',
+      'у': 'E', 'У': 'E',
+      'а': 'F', 'А': 'F',
+      'п': 'G', 'П': 'G',
+      'р': 'H', 'Р': 'H',
+      'ш': 'I', 'Ш': 'I',
+      'о': 'J', 'О': 'J',
+      'л': 'K', 'Л': 'K',
+      'д': 'L', 'Д': 'L',
+      'ь': 'M', 'Ь': 'M',
+      'т': 'N', 'Т': 'N',
+      'щ': 'O', 'Щ': 'O',
+      'з': 'P', 'З': 'P',
+      'й': 'Q', 'Й': 'Q',
+      'к': 'R', 'К': 'R',
+      'ы': 'S', 'Ы': 'S',
+      'е': 'T', 'Е': 'T',
+      'г': 'U', 'Г': 'U',
+      'м': 'V', 'М': 'V',
+      'ц': 'W', 'Ц': 'W',
+      'ч': 'X', 'Ч': 'X',
+      'н': 'Y', 'Н': 'Y',
+      'я': 'Z', 'Я': 'Z',
+      'х': '[', 'Х': '[',
+      'ъ': ']', 'Ъ': ']',
+    };
+    if (cyrillicToEn.containsKey(ch)) {
+      return cyrillicToEn[ch];
+    }
+    if (ch == '[' || ch == ']' || ch == '\\' || ch == '^' || ch == '_' || ch == '@' || ch == ' ') {
+      return ch;
+    }
+    return null;
   }
 
   void sendDirect(String text) {
@@ -174,29 +284,46 @@ class TerminalSession extends ChangeNotifier {
       _shell = shell;
 
       terminal.onOutput = (data) {
+        // 1. Если уже зафиксирована комбинация Ctrl (например Ctrl^C):
+        // Ожидаем нажатия Return / Enter для отправки.
+        // При нажатии Return отправляем ТОЛЬКО байт Ctrl без Enter (\r, \n).
+        if (pendingCtrlChar != null) {
+          if (data.contains('\r') || data.contains('\n')) {
+            sendPendingCtrl();
+            return;
+          }
+          if (data == '\x7f' || data == '\x08') {
+            clearPendingCharOnly();
+            return;
+          }
+          if (data == '\x1b') {
+            clearPendingCtrl();
+            return;
+          }
+          final nextMapped = mapToCtrlChar(data);
+          if (nextMapped != null) {
+            setPendingCtrl(nextMapped);
+            return;
+          }
+        }
+
+        // 2. Если нажат модификатор CTRL (но буква еще не была выбрана):
+        if (ctrlModifier && data.isNotEmpty) {
+          if (data == '\x7f' || data == '\x08' || data == '\x1b') {
+            clearPendingCtrl();
+            return;
+          }
+          final mapped = mapToCtrlChar(data);
+          if (mapped != null) {
+            // Запоминаем символ и отображаем Ctrl^<символ> на панели.
+            // НЕ отправляем сразу в shell, ждем Return / Enter!
+            setPendingCtrl(mapped);
+            return;
+          }
+        }
+
         _updateClientTypedCommand(data);
         var output = data;
-        if (ctrlModifier && output.isNotEmpty) {
-          final buffer = StringBuffer();
-          for (var i = 0; i < output.length; i++) {
-            final code = output.codeUnitAt(i);
-            if (code >= 97 && code <= 122) {
-              // a-z -> 1-26 (Ctrl+A .. Ctrl+Z)
-              buffer.writeCharCode(code - 96);
-            } else if (code >= 65 && code <= 90) {
-              // A-Z -> 1-26 (Ctrl+A .. Ctrl+Z)
-              buffer.writeCharCode(code - 64);
-            } else if (code == 32) {
-              // space -> 0 (NUL)
-              buffer.writeCharCode(0);
-            } else {
-              buffer.writeCharCode(code);
-            }
-          }
-          output = buffer.toString();
-          ctrlModifier = false;
-          onModifiersChanged?.call();
-        }
         if (altModifier && output.isNotEmpty) {
           output = '\x1b$output';
           altModifier = false;
@@ -361,8 +488,9 @@ class TerminalSession extends ChangeNotifier {
         }
         return transport;
       } on SshFailure catch (e) {
-        if (cancelled)
+        if (cancelled) {
           throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
+        }
         switch (e.kind) {
           case SshFailureKind.auth when host.auth == AuthMethod.password:
             if (passwordFromStore) {
@@ -432,8 +560,9 @@ class TerminalSession extends ChangeNotifier {
               : await secrets.read(passphraseKey(host.id));
           if (passphrase == null) {
             final answer = await prompts.askPassphrase(host, raw, retry: retry);
-            if (answer == null)
+            if (answer == null) {
               throw const SshFailure(SshFailureKind.cancelled, 'Отменено');
+            }
             passphrase = answer.value;
             if (answer.remember) {
               try {

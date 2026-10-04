@@ -12,6 +12,7 @@ import '../../domain/models/session_tab.dart';
 import '../../domain/services/external_colors_controller.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
+import '../../domain/services/terminal_session.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../sftp/sftp_pane.dart';
 import '../shell/ui_state.dart';
@@ -945,7 +946,46 @@ class _SessionViewState extends ConsumerState<SessionView>
             fontFamilyFallback: monoFontFallback,
           ),
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          keyboardType: TextInputType.multiline,
+          keyboardType: settings.incognitoKeyboard
+              ? TextInputType.visiblePassword
+              : TextInputType.multiline,
+          onKeyEvent: (focusNode, event) {
+            if (event is KeyDownEvent) {
+              if (session.pendingCtrlChar != null) {
+                if (event.logicalKey == LogicalKeyboardKey.enter ||
+                    event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+                  session.sendPendingCtrl();
+                  return KeyEventResult.handled;
+                }
+                if (event.logicalKey == LogicalKeyboardKey.backspace) {
+                  session.clearPendingCharOnly();
+                  return KeyEventResult.handled;
+                }
+                if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  session.clearPendingCtrl();
+                  return KeyEventResult.handled;
+                }
+                final keyLabel = event.character ?? event.logicalKey.keyLabel;
+                final mapped = TerminalSession.mapToCtrlChar(keyLabel);
+                if (mapped != null) {
+                  session.setPendingCtrl(mapped);
+                  return KeyEventResult.handled;
+                }
+              } else if (session.ctrlModifier) {
+                if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  session.clearPendingCtrl();
+                  return KeyEventResult.handled;
+                }
+                final keyLabel = event.character ?? event.logicalKey.keyLabel;
+                final mapped = TerminalSession.mapToCtrlChar(keyLabel);
+                if (mapped != null) {
+                  session.setPendingCtrl(mapped);
+                  return KeyEventResult.handled;
+                }
+              }
+            }
+            return KeyEventResult.ignored;
+          },
           onSecondaryTapDown: (details, _) {
             _onSecondaryClick(details.globalPosition, details.localPosition);
           },

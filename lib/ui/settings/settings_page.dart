@@ -201,29 +201,32 @@ class SettingsPage extends ConsumerWidget {
                       onChanged: ctrl.setIncognitoKeyboard,
                     ),
                     const SizedBox(height: 8),
-                    _Row(
-                      title: strings.languageTitle,
-                      child: DropdownButton<AppLanguage>(
-                        value: s.language,
-                        underline: const SizedBox.shrink(),
-                        borderRadius: BorderRadius.circular(12),
-                        items: [
-                          DropdownMenuItem(
-                            value: AppLanguage.auto,
-                            child: Text(strings.languageAuto),
-                          ),
-                          DropdownMenuItem(
-                            value: AppLanguage.ru,
-                            child: Text(strings.languageRu),
-                          ),
-                          DropdownMenuItem(
-                            value: AppLanguage.en,
-                            child: Text(strings.languageEn),
-                          ),
-                        ],
-                        onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
+                    if (DesktopEnv.isDesktop) ...[
+                      _Row(
+                        title: strings.languageTitle,
+                        child: DropdownButton<AppLanguage>(
+                          value: s.language,
+                          underline: const SizedBox.shrink(),
+                          borderRadius: BorderRadius.circular(12),
+                          items: [
+                            DropdownMenuItem(
+                              value: AppLanguage.auto,
+                              child: Text(strings.languageAuto),
+                            ),
+                            DropdownMenuItem(
+                              value: AppLanguage.ru,
+                              child: Text(strings.languageRu),
+                            ),
+                            DropdownMenuItem(
+                              value: AppLanguage.en,
+                              child: Text(strings.languageEn),
+                            ),
+                          ],
+                          onChanged: (v) => v != null ? ctrl.setLanguage(v) : null,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                    ],
                     const SizedBox(height: 12),
                     Text(
                       DesktopEnv.isMobile ? strings.rightClickMobileTitle : strings.rightClickDesktopTitle,

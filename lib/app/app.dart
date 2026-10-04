@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -59,6 +60,24 @@ class VyshApp extends ConsumerWidget {
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),
       themeAnimationDuration: const Duration(milliseconds: 300),
+      supportedLocales: const [
+        Locale('ru'),
+        Locale('en'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        if (locale != null) {
+          final code = locale.languageCode.toLowerCase();
+          if (code == 'ru' || code == 'be' || code == 'uk') {
+            return const Locale('ru');
+          }
+        }
+        return const Locale('en');
+      },
       home: const AppShell(),
     );
   }

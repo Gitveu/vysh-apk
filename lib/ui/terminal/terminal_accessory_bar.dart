@@ -60,6 +60,23 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
 
   void _sendKey(TerminalKey key) {
     HapticFeedback.lightImpact();
+    if (widget.session.pendingCtrlChar != null) {
+      if (key == TerminalKey.enter || key == TerminalKey.numpadEnter) {
+        widget.session.sendPendingCtrl();
+        _refocus();
+        return;
+      }
+      if (key == TerminalKey.backspace) {
+        widget.session.clearPendingCharOnly();
+        _refocus();
+        return;
+      }
+      if (key == TerminalKey.escape) {
+        widget.session.clearPendingCtrl();
+        _refocus();
+        return;
+      }
+    }
     widget.session.terminal.keyInput(
       key,
       ctrl: widget.session.ctrlModifier,
@@ -78,17 +95,28 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
 
   void _sendText(String text) {
     HapticFeedback.lightImpact();
-    if (widget.session.ctrlModifier && text.length == 1) {
-      final code = text.toUpperCase().codeUnitAt(0);
-      if (code >= 64 && code <= 95) {
-        widget.session.sendDirect(String.fromCharCode(code - 64));
-      } else {
-        widget.session.sendDirect(text);
+    if (widget.session.pendingCtrlChar != null) {
+      if (text == '\r' || text == '\n') {
+        widget.session.sendPendingCtrl();
+        _refocus();
+        return;
       }
-      widget.session.resetModifiers();
-    } else {
-      widget.session.terminal.textInput(text);
+      final mapped = TerminalSession.mapToCtrlChar(text);
+      if (mapped != null) {
+        widget.session.setPendingCtrl(mapped);
+        _refocus();
+        return;
+      }
     }
+    if (widget.session.ctrlModifier) {
+      final mapped = TerminalSession.mapToCtrlChar(text);
+      if (mapped != null) {
+        widget.session.setPendingCtrl(mapped);
+        _refocus();
+        return;
+      }
+    }
+    widget.session.terminal.textInput(text);
     _refocus();
   }
 
@@ -293,11 +321,24 @@ class _TerminalAccessoryBarState extends State<TerminalAccessoryBar> {
                     onTap: () => _sendKey(TerminalKey.escape),
                   ),
                   _KeyChip(
-                    label: 'CTRL',
-                    active: ctrlActive,
+                    label: widget.session.pendingCtrlChar != null
+                        ? 'Ctrl^${widget.session.pendingCtrlChar}'
+                        : 'CTRL',
+                    active: ctrlActive || widget.session.pendingCtrlChar != null,
+                    tooltip: widget.session.pendingCtrlChar != null
+                        ? (strings.isRu
+                            ? 'Ctrl^${widget.session.pendingCtrlChar} (нажмите Return для отправки)'
+                            : 'Ctrl^${widget.session.pendingCtrlChar} (press Return to send)')
+                        : (strings.isRu
+                            ? 'CTRL (затем английскую букву и Return)'
+                            : 'CTRL (then English key and Return)'),
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      widget.session.toggleCtrl();
+                      if (widget.session.pendingCtrlChar != null) {
+                        widget.session.sendPendingCtrl();
+                      } else {
+                        widget.session.toggleCtrl();
+                      }
                       _refocus();
                     },
                     onLongPress: () => _showCtrlMenu(context),
