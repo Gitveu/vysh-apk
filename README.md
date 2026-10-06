@@ -11,7 +11,6 @@
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=black)](https://android.com)
 [![Architecture](https://img.shields.io/badge/ABI-arm64--v8a%20%7C%20armeabi--v7a-blue)](#установка)
 [![Material 3](https://img.shields.io/badge/Material%203-Dynamic%20Color-757575?logo=materialdesign&logoColor=white)](https://m3.material.io)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 [Скачать APK](../../releases/latest) · [Возможности](#возможности) · [Установка](#установка) · [Сборка](#сборка-из-исходников) · [Благодарности](#credits)
 
@@ -98,4 +97,4 @@ flutter build apk --split-per-abi --release \
 ## Credits
 
 - Оригинальный проект и десктопная версия: [vyto4ka/vysh](https://github.com/vyto4ka/vysh)
-- Портирование и адаптация под Android: [Gitveu/vysh-apk](https://github.com/Gitveu/vysh-apk)
+- Портирование и адаптация под Android: [Gitveu/vysh-apk](https://github.com/Gitveu/vysh-apk) 
