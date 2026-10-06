@@ -52,7 +52,7 @@ class DesktopEnv {
     }
   }
 
-  /// Wayland: позицию окна задавать нельзя — это решает композитор.
+  /// Wayland: позицию окна задавать нельзя - это решает композитор.
   static bool get isWayland {
     if (kIsWeb) return false;
     try {

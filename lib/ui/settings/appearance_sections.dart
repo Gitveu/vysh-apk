@@ -12,8 +12,20 @@ import '../../domain/services/settings_controller.dart';
 import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/local_files.dart';
 import '../theme/app_theme.dart';
+import 'setting_row.dart';
 
 const _themesDocUrl = 'https://github.com/vyto4ka/vysh/blob/main/docs/THEMES.md';
+
+const seedPresets = [
+  ('Фиолетовый', 0xFF6750A4),
+  ('Синий', 0xFF1976D2),
+  ('Бирюзовый', 0xFF00796B),
+  ('Зелёный', 0xFF388E3C),
+  ('Янтарный', 0xFFF57C00),
+  ('Коралловый', 0xFFE64A19),
+  ('Бордовый', 0xFFC2185B),
+  ('Индиго', 0xFF303F9F),
+];
 
 /// «Откуда брать цвета»: свой акцент, системный, доты.
 class ColorSourceSection extends ConsumerStatefulWidget {
@@ -45,180 +57,144 @@ class _ColorSourceSectionState extends ConsumerState<ColorSourceSection> {
     final ext = ref.watch(externalColorsProvider);
     final notFound = ref.read(externalColorsProvider.notifier).notFound;
     final strings = AppStrings.of(context, s.language);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
+    final error = TextStyle(color: scheme.error, fontSize: 13);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(strings.colorSourceTitle, style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        SegmentedButton<ColorSource>(
-          showSelectedIcon: false,
-          style: const ButtonStyle(
-            visualDensity: VisualDensity.compact,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          segments: [
-            ButtonSegment(
-              value: ColorSource.preset,
-              icon: const Icon(Icons.palette_outlined, size: 18),
-              label: Text(strings.colorSourcePreset, maxLines: 1, softWrap: false),
-            ),
-            if (!kIsWeb && (Platform.isWindows || Platform.isLinux))
-              ButtonSegment(
-                value: ColorSource.system,
-                icon: const Icon(Icons.computer, size: 18),
-                label: Text(
-                  !kIsWeb && Platform.isWindows
-                      ? strings.colorSourceSystemWin
-                      : strings.colorSourceSystemSys,
-                  maxLines: 1,
-                  softWrap: false,
-                ),
-              ),
-            if (!kIsWeb && Platform.isLinux)
-              ButtonSegment(
-                value: ColorSource.dots,
-                icon: const Icon(Icons.wallpaper, size: 18),
-                label: Text(strings.colorSourceDots, maxLines: 1, softWrap: false),
+    final details = switch (s.colorSource) {
+      ColorSource.preset => Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final (name, color) in seedPresets)
+              _SeedSwatch(
+                name: name,
+                color: Color(color),
+                selected: s.seedColor == color,
+                onTap: () => ctrl.setSeedColor(color),
               ),
           ],
-          selected: {s.colorSource},
-          onSelectionChanged: (v) => ctrl.setColorSource(v.first),
         ),
-        const SizedBox(height: 12),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          alignment: Alignment.topCenter,
-          child: switch (s.colorSource) {
-            ColorSource.preset => Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final (name, color) in seedPresets)
-                    _SeedSwatch(
-                      name: name,
-                      color: Color(color),
-                      selected: s.seedColor == color,
-                      onTap: () => ctrl.setSeedColor(color),
-                    ),
-                ],
+      ColorSource.system => ext == null && notFound
+          ? Text(
+              !kIsWeb && Platform.isWindows
+                  ? (strings.isRu ? 'Акцент Windows не найден' : 'Windows accent not found')
+                  : (strings.isRu
+                      ? 'Акцент не найден: нужен xdg-desktop-portal с accent-color'
+                      : 'Accent not found: requires xdg-desktop-portal with accent-color'),
+              style: error,
+            )
+          : const SizedBox.shrink(),
+      ColorSource.dots => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (ext != null && ext.path != null)
+              Text(
+                '${ext.source}: ${ext.path}',
+                style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant),
+              )
+            else if (notFound)
+              Text(
+                strings.isRu ? 'Файл цветов не найден' : 'Color file not found',
+                style: error,
               ),
-            ColorSource.system => _Status(
-                ext: ext,
-                notFound: notFound,
-                hint: (!kIsWeb && Platform.isWindows)
-                    ? 'Цвет берётся из «Параметры → Персонализация → Цвета». Меняется на лету.'
-                    : (!kIsWeb && Platform.isLinux)
-                        ? 'Нужен xdg-desktop-portal с поддержкой accent-color (GNOME 47+, KDE Plasma 6). '
-                          'В тайлинговых WM акцента обычно нет — используйте «Из дотов».'
-                        : 'Системный акцент поддерживается на десктопе.',
+            const SizedBox(height: 10),
+            TextField(
+              controller: _path,
+              style: monoStyle(context, size: 13),
+              decoration: InputDecoration(
+                labelText: strings.isRu ? 'Свой путь к файлу' : 'Custom file path',
+                hintText: '~/.config/vysh/colors.json',
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: IconButton(
+                  tooltip: strings.isRu ? 'Применить' : 'Apply',
+                  icon: const Icon(Icons.check),
+                  onPressed: () => ctrl.setDotsPath(_path.text.trim()),
+                ),
               ),
-            ColorSource.dots => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Status(
-                    ext: ext,
-                    notFound: notFound,
-                    hint: 'Ищем по порядку: свой путь → ~/.config/vysh/colors.json → '
-                        'caelestia → pywal. Файл перечитывается при каждом изменении.',
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _path,
-                    style: monoStyle(context, size: 13),
-                    decoration: InputDecoration(
-                      labelText: 'Свой путь к файлу цветов (необязательно)',
-                      hintText: '~/.config/matugen/vysh.json',
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: IconButton(
-                        tooltip: 'Применить',
-                        icon: const Icon(Icons.check),
-                        onPressed: () => ctrl.setDotsPath(_path.text.trim()),
-                      ),
-                    ),
-                    onSubmitted: (v) => ctrl.setDotsPath(v.trim()),
-                  ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => LocalFiles.openWithSystem(_themesDocUrl),
-                      icon: const Icon(Icons.menu_book_outlined, size: 18),
-                      label: const Text('Как подключить matugen, wallust, pywal, caelestia'),
-                    ),
-                  ),
-                ],
+              onSubmitted: (v) => ctrl.setDotsPath(v.trim()),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => LocalFiles.openWithSystem(_themesDocUrl),
+                icon: const Icon(Icons.menu_book_outlined, size: 18),
+                label: const Text('matugen, wallust, pywal, caelestia'),
               ),
-          },
+            ),
+          ],
         ),
-        if (s.colorSource != ColorSource.preset && ext != null) ...[
-          const SizedBox(height: 12),
-          _Preview(ext: ext, scheme: scheme),
-        ],
-      ],
-    );
-  }
-}
+    };
 
-class _Status extends ConsumerWidget {
-  const _Status({required this.ext, required this.notFound, required this.hint});
-
-  final ExternalColors? ext;
-  final bool notFound;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final e = ext;
-    final ok = e != null;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ok ? scheme.secondaryContainer.withValues(alpha: 0.5) : scheme.errorContainer.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(ok ? Icons.check_circle_outline : Icons.help_outline,
-              size: 20, color: ok ? scheme.onSecondaryContainer : scheme.onErrorContainer),
-          const SizedBox(width: 10),
-          Expanded(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingRow(
+          label: strings.colorSourceTitle,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  e != null
-                      ? 'Сейчас: ${e.source}'
-                      : notFound
-                          ? 'Источник не найден — используются свои цвета'
-                          : 'Ищем…',
-                  style: theme.textTheme.titleSmall,
+                SegmentedButton<ColorSource>(
+                  segments: [
+                    ButtonSegment(
+                      value: ColorSource.preset,
+                      icon: const Icon(Icons.palette_outlined),
+                      label: Text(strings.colorSourcePreset),
+                    ),
+                    if (!kIsWeb && (Platform.isWindows || Platform.isLinux))
+                      ButtonSegment(
+                        value: ColorSource.system,
+                        icon: const Icon(Icons.computer),
+                        label: Text(
+                          !kIsWeb && Platform.isWindows
+                              ? strings.colorSourceSystemWin
+                              : strings.colorSourceSystemSys,
+                        ),
+                      ),
+                    if (!kIsWeb && Platform.isLinux)
+                      ButtonSegment(
+                        value: ColorSource.dots,
+                        icon: const Icon(Icons.wallpaper),
+                        label: Text(strings.colorSourceDots),
+                      ),
+                  ],
+                  selected: {s.colorSource},
+                  onSelectionChanged: (v) => ctrl.setColorSource(v.first),
                 ),
-                if (e?.path != null)
-                  Text(e!.path!, style: monoStyle(context, size: 12, color: scheme.onSurfaceVariant)),
-                const SizedBox(height: 4),
-                Text(hint, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                const SizedBox(height: 12),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  alignment: Alignment.topCenter,
+                  child: details,
+                ),
+                if (s.colorSource != ColorSource.preset && ext != null) ...[
+                  const SizedBox(height: 8),
+                  _Preview(ext: ext, scheme: scheme),
+                ],
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Перечитать',
-            icon: const Icon(Icons.refresh, size: 20),
-            onPressed: () => ref.read(externalColorsProvider.notifier).refresh(),
+        ),
+        if (s.colorSource != ColorSource.preset && !DesktopEnv.isMobile)
+          SettingRow(
+            label: strings.isRu ? 'Проверка цветов' : 'Color polling',
+            child: SettingChoice<int>(
+              value: s.colorPollSec,
+              options: [
+                (0, strings.isRu ? 'Выкл.' : 'Off'),
+                (10, strings.isRu ? '10 с' : '10s'),
+                (60, strings.isRu ? '1 мин' : '1 min'),
+                (300, strings.isRu ? '5 мин' : '5 min'),
+              ],
+              onChanged: ctrl.setColorPollSec,
+            ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -261,49 +237,38 @@ class _Preview extends StatelessWidget {
   }
 }
 
-/// «Заголовок окна»: авто / системный / свой.
+/// «Заголовок окна»: свой с вкладками или системный.
 class TitleBarSection extends ConsumerWidget {
   const TitleBarSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (DesktopEnv.isMobile) return const SizedBox.shrink();
     final s = ref.watch(settingsProvider);
     final ctrl = ref.read(settingsProvider.notifier);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final strings = AppStrings.of(context, s.language);
+    // «Авто» в интерфейсе не показываем: пока пользователь не выбрал сам,
+    // отмечен тот вариант, который сейчас действует.
     final custom = DesktopEnv.useCustomTitleBar(s.titleBarMode);
-
-    final autoHint = (!kIsWeb && Platform.isWindows)
-        ? 'Авто: свой заголовок с вкладками.'
-        : DesktopEnv.isTiling
-            ? 'Авто: обнаружен тайлинговый WM — заголовок не рисуем, окна раскладывает он.'
-            : DesktopEnv.supportsCustomTitleBar
-                ? 'Авто: GNOME / KDE — свой заголовок с вкладками.'
-                : 'Авто: рамку рисует оконный менеджер.';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Заголовок окна', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        SegmentedButton<TitleBarMode>(
-          segments: const [
-            ButtonSegment(value: TitleBarMode.auto, icon: Icon(Icons.auto_awesome), label: Text('Авто')),
-            ButtonSegment(
-                value: TitleBarMode.custom, icon: Icon(Icons.tab_outlined), label: Text('Свой с вкладками')),
-            ButtonSegment(
-                value: TitleBarMode.system, icon: Icon(Icons.web_asset), label: Text('Системный')),
-          ],
-          selected: {s.titleBarMode},
-          onSelectionChanged: (v) => ctrl.setTitleBarMode(v.first),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '$autoHint Сейчас: ${custom ? 'свой' : 'системный'}. '
-          'Размер и положение окна запоминаются между запусками.',
-          style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      ],
+    return SettingRow(
+      label: strings.titleBarTitle,
+      child: SegmentedButton<bool>(
+        segments: [
+          ButtonSegment(
+            value: true,
+            icon: const Icon(Icons.tab_outlined),
+            label: Text(strings.titleBarCustom),
+          ),
+          ButtonSegment(
+            value: false,
+            icon: const Icon(Icons.web_asset),
+            label: Text(strings.titleBarSystem),
+          ),
+        ],
+        selected: {custom},
+        onSelectionChanged: (v) =>
+            ctrl.setTitleBarMode(v.first ? TitleBarMode.custom : TitleBarMode.system),
+      ),
     );
   }
 }
@@ -328,7 +293,6 @@ class _SeedSwatch extends StatelessWidget {
       brightness: Theme.of(context).brightness,
     );
     final outline = Theme.of(context).colorScheme.onSurface;
-
     return Tooltip(
       message: name,
       child: InkWell(
@@ -367,4 +331,3 @@ class _SeedSwatch extends StatelessWidget {
     );
   }
 }
-

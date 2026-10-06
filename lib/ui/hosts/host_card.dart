@@ -8,12 +8,36 @@ import '../../domain/services/settings_controller.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/context_menu.dart';
+import '../widgets/modifiers.dart';
 import 'host_editor.dart';
 
 class HostCard extends ConsumerWidget {
-  const HostCard({super.key, required this.host});
+  const HostCard({
+    super.key,
+    required this.host,
+    this.selected = false,
+    this.selecting = false,
+    this.onToggleSelect,
+  });
 
   final Host host;
+
+  /// Карточка отмечена для массовых действий.
+  final bool selected;
+
+  /// Идёт выбор: клик отмечает карточку, а не подключается.
+  final bool selecting;
+  final VoidCallback? onToggleSelect;
+
+  void _onTap(WidgetRef ref) {
+    // Win/Meta не считаем: после Win+Shift+S он «залипал» и обычный клик
+    // отмечал хост вместо подключения.
+    if ((selecting || Modifiers.instance.ctrl) && onToggleSelect != null) {
+      onToggleSelect!();
+    } else {
+      ref.read(tabsProvider.notifier).openHost(host);
+    }
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -51,8 +75,16 @@ class HostCard extends ConsumerWidget {
     return ContextMenuArea(
       child: Builder(
         builder: (areaContext) => Card(
+          color: selected ? scheme.secondaryContainer : null,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: selected ? scheme.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
           child: InkWell(
-            onTap: () => ref.read(tabsProvider.notifier).openHost(host),
+            onTap: () => _onTap(ref),
             onSecondaryTapUp: (d) => ContextMenuArea.of(
               areaContext,
             )?.open(d.globalPosition, _items(context, ref, strings)),
@@ -60,14 +92,19 @@ class HostCard extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(14),
+                      color: selected
+                          ? scheme.primary
+                          : accent.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(selected ? 22 : 14),
                     ),
-                    child: Icon(Icons.dns_rounded, color: accent, size: 22),
+                    child: selected
+                        ? Icon(Icons.check_rounded, color: scheme.onPrimary, size: 24)
+                        : Icon(Icons.dns_rounded, color: accent, size: 22),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -102,10 +139,16 @@ class HostCard extends ConsumerWidget {
                     _Reachability(host: host, strings: strings),
                   ],
                   const SizedBox(width: 4),
-                  MenuIconButton(
-                    tooltip: strings.actions,
-                    items: _items(context, ref, strings),
-                  ),
+                  if (selecting)
+                    Checkbox(
+                      value: selected,
+                      onChanged: (_) => onToggleSelect?.call(),
+                    )
+                  else
+                    MenuIconButton(
+                      tooltip: strings.actions,
+                      items: _items(context, ref, strings),
+                    ),
                 ],
               ),
             ),
@@ -133,6 +176,14 @@ class HostCard extends ConsumerWidget {
         icon: Icons.copy_all_outlined,
         onPressed: () => showHostEditor(context, host: host, duplicate: true),
       ),
+      if (onToggleSelect != null)
+        menuItem(
+          selected
+              ? (strings.isRu ? 'Снять выбор' : 'Deselect')
+              : (strings.isRu ? 'Выбрать' : 'Select'),
+          icon: Icons.check_box_outlined,
+          onPressed: onToggleSelect,
+        ),
       menuItem(
         strings.forgetPassword,
         icon: Icons.key_off_outlined,

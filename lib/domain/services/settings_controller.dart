@@ -50,6 +50,22 @@ class SettingsController extends Notifier<AppSettings> {
   void setMiddleClickPaste(bool v) =>
       _update(state.copyWith(middleClickPaste: v));
   void setCtrlVPaste(bool v) => _update(state.copyWith(ctrlVPaste: v));
+  /// Стиль буфера: «как в Linux» (выделение копирует, средняя кнопка вставляет)
+  /// или только клавишами. Правый клик подстраивается: в Linux-стиле он просто
+  /// вставляет, в клавишном - копирует выделенное, а без выделения вставляет.
+  void setLinuxClipboard(bool linux) => _update(state.copyWith(
+        copyOnSelect: linux,
+        middleClickPaste: linux,
+        rightClick: state.rightClick == RightClickAction.menu
+            ? RightClickAction.menu
+            : (linux ? RightClickAction.paste : RightClickAction.smart),
+      ));
+
+  void setRightClickPaste(bool on) => _update(state.copyWith(
+        rightClick: !on
+            ? RightClickAction.menu
+            : (state.copyOnSelect ? RightClickAction.paste : RightClickAction.smart),
+      ));
   void setConfirmMultilinePaste(bool v) =>
       _update(state.copyWith(confirmMultilinePaste: v));
   void setColorSource(ColorSource v) => _update(state.copyWith(colorSource: v));
@@ -58,13 +74,16 @@ class SettingsController extends Notifier<AppSettings> {
       _update(state.copyWith(titleBarMode: v));
   void setKeepAliveSeconds(int seconds) =>
       _update(state.copyWith(keepAliveSeconds: seconds));
-  void setAppIcon(String _) {
-    _update(state.copyWith(appIcon: 'monet'));
-  }
 
   void setShowAccessoryBar(bool v) =>
       _update(state.copyWith(showAccessoryBar: v));
   void setLanguage(AppLanguage lang) => _update(state.copyWith(language: lang));
+  void setScrollbackLines(int v) => _update(state.copyWith(scrollbackLines: v));
+  void setPingIntervalSec(int v) => _update(state.copyWith(pingIntervalSec: v));
+  void setPingOnlyVisible(bool v) => _update(state.copyWith(pingOnlyVisible: v));
+  void setColorPollSec(int v) => _update(state.copyWith(colorPollSec: v));
+  void setPauseHiddenTabs(bool v) => _update(state.copyWith(pauseHiddenTabs: v));
+  void setRenderer(Renderer v) => _update(state.copyWith(renderer: v));
 
   void _update(AppSettings next) {
     state = next;

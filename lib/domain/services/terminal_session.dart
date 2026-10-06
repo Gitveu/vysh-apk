@@ -39,10 +39,12 @@ class TerminalSession extends ChangeNotifier {
     required this.onStatus,
     this.defaultKeepAliveSeconds = 60,
     String? initialPassword,
-  }) : _memPassword = initialPassword;
+    int scrollbackLines = 10000,
+  })  : _memPassword = initialPassword,
+        terminal = Terminal(maxLines: scrollbackLines);
 
   /// Пароль, введённый в этой сессии (в редакторе хоста или в диалоге).
-  /// Живёт только в памяти — чтобы переподключение не спрашивало его заново.
+  /// Живёт только в памяти - чтобы переподключение не спрашивало его заново.
   String? _memPassword;
 
   /// Интервал KeepAlive по умолчанию из настроек (в секундах).
@@ -56,7 +58,8 @@ class TerminalSession extends ChangeNotifier {
   final KnownHosts knownHosts;
   final void Function(SessionStatus status) onStatus;
 
-  final terminal = Terminal(maxLines: 10000);
+  /// Эмулятор терминала; размер истории задаётся в настройках.
+  final Terminal terminal;
 
   SessionStatus _status = SessionStatus.connecting;
   SessionStatus get status => _status;
@@ -67,7 +70,7 @@ class TerminalSession extends ChangeNotifier {
   /// Журнал последней попытки подключения.
   final connLog = <ConnLogEntry>[];
 
-  /// Ошибка последней попытки (null — подключились или ещё подключаемся).
+  /// Ошибка последней попытки (null - подключились или ещё подключаемся).
   SshFailure? lastFailure;
 
   /// Соединение оборвалось уже после успешного входа.
@@ -530,7 +533,7 @@ class TerminalSession extends ChangeNotifier {
         if (pem.contains('PuTTY-User-Key-File')) {
           throw const SshFailure(
             SshFailureKind.config,
-            'Ключи PuTTY (.ppk) пока не поддерживаются — экспортируйте ключ в формат OpenSSH в PuTTYgen.',
+            'Ключи PuTTY (.ppk) пока не поддерживаются, экспортируйте ключ в формат OpenSSH в PuTTYgen.',
           );
         }
         String? passphrase;
@@ -632,7 +635,7 @@ class TerminalSession extends ChangeNotifier {
   }
 }
 
-/// `~/...` → домашняя папка (на Windows — %USERPROFILE%).
+/// `~/...` → домашняя папка (на Windows - %USERPROFILE%).
 String expandHome(String path) {
   if (!path.startsWith('~')) return path;
   if (kIsWeb) return path;

@@ -74,7 +74,7 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
 
   String _logText({bool withDebug = true}) {
     final b = StringBuffer()
-      ..writeln('vysh — connection log for ${_host.displayAddress}');
+      ..writeln('vysh: connection log for ${_host.displayAddress}');
     for (final e in widget.session.connLog) {
       if (e.debug && !withDebug) continue;
       final t = e.time;
@@ -148,7 +148,9 @@ class _ConnectionFailureViewState extends ConsumerState<ConnectionFailureView> {
       SshFailureKind.other => (
           Icons.error_outline,
           strings.isRu ? 'Не удалось подключиться' : 'Failed to connect',
-          strings.isRu ? 'Подробности — в журнале ниже.' : 'Details are in the log below.',
+          strings.isRu
+              ? 'Подробности в журнале ниже.'
+              : 'Details are in the log below.',
         ),
     };
   }

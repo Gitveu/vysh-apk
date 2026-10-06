@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../infra/platform/color_sources.dart';
@@ -11,7 +12,7 @@ import '../models/external_colors.dart';
 import 'settings_controller.dart';
 
 /// Внешние цвета (акцент системы / доты) с обновлением на лету.
-/// null — источник «Свой цвет» или ничего не найдено.
+/// null - источник «Свой цвет» или ничего не найдено.
 final externalColorsProvider =
     NotifierProvider<ExternalColorsController, ExternalColors?>(ExternalColorsController.new);
 
@@ -19,6 +20,10 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
   final _subs = <StreamSubscription<Object?>>[];
   final _timers = <Timer>[];
   Process? _monitor;
+  AppLifecycleListener? _life;
+
+  /// Запасной опрос, секунд; 0 - только события (файлы, портал, фокус окна).
+  int _pollEvery = 60;
   Timer? _debounce;
   bool _disposed = false;
   int _gen = 0;
@@ -30,6 +35,7 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
   ExternalColors? build() {
     final source = ref.watch(settingsProvider.select((s) => s.colorSource));
     final dotsPath = ref.watch(settingsProvider.select((s) => s.dotsPath));
+    _pollEvery = ref.watch(settingsProvider.select((s) => s.colorPollSec));
     _disposed = false;
     _gen++;
     ref.onDispose(_stop);
@@ -66,7 +72,7 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
   Future<void> _load() async {
     final gen = _gen;
     final next = await _loader();
-    // Источник успели сменить, пока читали — результат устарел.
+    // Источник успели сменить, пока читали - результат устарел.
     if (_disposed || gen != _gen) return;
     notFound = next == null;
     final cur = stateOrNull;
@@ -79,6 +85,20 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
     state = next;
   }
 
+  /// Окно видно (не свёрнуто) - только тогда есть смысл опрашивать.
+  static bool get _visible {
+    final s = WidgetsBinding.instance.lifecycleState;
+    return s == null || s == AppLifecycleState.resumed || s == AppLifecycleState.inactive;
+  }
+
+  /// Редкий запасной опрос; пока окно свёрнуто - не опрашиваем совсем.
+  void _poll() {
+    if (_pollEvery <= 0) return;
+    _timers.add(Timer.periodic(Duration(seconds: _pollEvery), (_) {
+      if (_visible) _load();
+    }));
+  }
+
   void _schedule() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), _load);
@@ -86,11 +106,15 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
 
   void _watchSystem() {
     if (kIsWeb) return;
-    if (!kIsWeb && Platform.isWindows) {
-      // Смену акцента Windows ловим опросом реестра — дёшево, раз в 4 с.
-      _timers.add(Timer.periodic(const Duration(seconds: 4), (_) => _load()));
+    if (Platform.isWindows) {
+      // Акцент меняют в «Параметрах» - значит, наше окно в это время не в фокусе.
+      // Перечитываем реестр, когда окно снова получает фокус, плюс запасной опрос
+      // с интервалом из настроек.
+      _life = AppLifecycleListener(onResume: _schedule);
+      _poll();
       return;
     }
+    if (!Platform.isLinux) return;
     // Linux: слушаем сигнал SettingChanged портала, плюс редкий опрос на всякий случай.
     Process.start('gdbus', [
       'monitor', '--session',
@@ -108,12 +132,12 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
         if (chunk.contains('accent-color') || chunk.contains('color-scheme')) _schedule();
       }));
     }).catchError((_) {});
-    _timers.add(Timer.periodic(const Duration(seconds: 30), (_) => _load()));
+    _poll();
   }
 
   void _watchDots(String customPath) {
     // Генераторы (matugen, wal, caelestia) обычно пишут во временный файл и
-    // переименовывают — поэтому следим за папкой, а не за самим файлом.
+    // переименовывают - поэтому следим за папкой, а не за самим файлом.
     final dirs = <String>{};
     for (final path in ColorSources.dotsCandidates(customPath)) {
       final dir = File(path).parent;
@@ -126,7 +150,9 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
       } catch (_) {}
     }
     // Запасной вариант: папки могло не быть при запуске, или ФС без inotify.
-    _timers.add(Timer.periodic(const Duration(seconds: 10), (_) => _load()));
+    // Обычно хватает слежения за папкой, поэтому опрос редкий.
+    _life = AppLifecycleListener(onResume: _schedule);
+    _poll();
   }
 
   /// Перечитать прямо сейчас (кнопка в настройках).
@@ -145,5 +171,7 @@ class ExternalColorsController extends Notifier<ExternalColors?> {
     _subs.clear();
     _monitor?.kill();
     _monitor = null;
+    _life?.dispose();
+    _life = null;
   }
 }

@@ -138,6 +138,9 @@ class AppStrings {
   String get colorSourceSystemSys => isRu ? 'Акцент системы' : 'System accent';
   String get colorSourceDots => isRu ? 'Из дотов' : 'From dots';
   String get compactUi => isRu ? 'Компактный интерфейс' : 'Compact interface';
+  String get titleBarTitle => isRu ? 'Заголовок окна' : 'Window title bar';
+  String get titleBarCustom => isRu ? 'Свой с вкладками' : 'Custom with tabs';
+  String get titleBarSystem => isRu ? 'Системный' : 'System';
   String get windowSection => isRu ? 'Окно' : 'Window';
   String get hostsSection => isRu ? 'Хосты' : 'Hosts';
   String get pingHostsTitle =>
@@ -204,6 +207,14 @@ class AppStrings {
   String get multilinePasteDesc => isRu
       ? 'Защита от случайного выполнения команд при копировании скриптов'
       : 'Protection against accidental command execution when pasting scripts';
+  String get copyOnSelectDesc => isRu
+      ? 'Выделенный текст сразу попадает в буфер обмена'
+      : 'Copy highlighted text immediately';
+  String get rightClickTitle => isRu ? 'Правый клик' : 'Right click';
+  String get middleClickPasteTitle => isRu ? 'Средняя кнопка мыши' : 'Middle click paste';
+  String get middleClickPasteDesc => isRu ? 'Вставка кликом на колёсико мыши' : 'Paste with wheel click';
+  String get confirmMultilinePasteTitle => isRu ? 'Предупреждать при многострочной вставке' : 'Confirm multiline paste';
+  String get confirmMultilinePasteDesc => isRu ? 'Защита от случайного выполнения команд' : 'Protection from accidental command execution';
   String get downloadsDirTitle =>
       isRu ? 'Папка для скачивания файлов' : 'Downloads directory';
   String get downloadsDefaultNote =>

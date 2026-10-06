@@ -4,6 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Где vysh хранит свои файлы (хосты, настройки, known_hosts).
+///
+/// Всегда в профиле пользователя - неважно, откуда запущен exe.
+/// Поэтому обновление = удалить старую папку с программой и распаковать
+/// новую: хосты и настройки останутся.
+///
+/// * Android: getApplicationDocumentsDirectory() / vysh
+/// * Windows: `%APPDATA%\vysh`
+/// * Linux: `$XDG_CONFIG_HOME/vysh` (обычно `~/.config/vysh`)
 class AppPaths {
   AppPaths._();
 

@@ -441,7 +441,11 @@ class _HostEditorSheetState extends ConsumerState<_HostEditorSheet> {
                           controller: _user,
                           decoration: _dec(
                             strings.userField,
+                            hint: 'root',
                             icon: const Icon(Icons.person_outline),
+                          ).copyWith(
+                            floatingLabelBehavior:
+                                FloatingLabelBehavior.always,
                           ),
                           validator: (v) => (v == null || v.trim().isEmpty)
                               ? strings.requiredField

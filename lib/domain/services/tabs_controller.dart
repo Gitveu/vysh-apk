@@ -4,9 +4,9 @@ import '../../infra/platform/android_wakelock.dart';
 import '../models/host.dart';
 import '../models/session_tab.dart';
 import 'hosts_controller.dart';
+import 'settings_controller.dart';
 import 'known_hosts.dart';
 import 'ports_providers.dart';
-import 'settings_controller.dart';
 import 'terminal_session.dart';
 import 'transfer_queue.dart';
 
@@ -31,7 +31,7 @@ class TabsController extends Notifier<TabsState> {
 
   TerminalSession? sessionOf(String tabId) => _sessions[tabId];
 
-  /// [password] — введённый в редакторе пароль: используется для этой сессии,
+  /// [password] - введённый в редакторе пароль: используется для этой сессии,
   /// даже если пользователь не стал сохранять его в хранилище.
   void openHost(Host host, {String? password}) {
     final tab = SessionTab(id: newId(), host: host, title: host.title);
@@ -44,6 +44,7 @@ class TabsController extends Notifier<TabsState> {
       onStatus: (s) => _setStatus(tab.id, s),
       defaultKeepAliveSeconds: ref.read(settingsProvider).keepAliveSeconds,
       initialPassword: password,
+      scrollbackLines: ref.read(settingsProvider).scrollbackLines,
     );
     _sessions[tab.id] = session;
     state = TabsState(tabs: [...state.tabs, tab], active: state.tabs.length + 1);
@@ -52,10 +53,28 @@ class TabsController extends Notifier<TabsState> {
     Future<void>.delayed(const Duration(milliseconds: 50), session.connect);
   }
 
+  /// Открыть сразу несколько хостов: каждый в своей вкладке, активной
+  /// становится первая из новых. Подключения разнесены на 150 мс, чтобы
+  /// не стучаться во все серверы в одну миллисекунду.
+  void openHosts(List<Host> hosts) {
+    if (hosts.isEmpty) return;
+    final first = state.tabs.length + 1;
+    for (var i = 0; i < hosts.length; i++) {
+      final host = hosts[i];
+      Future<void>.delayed(Duration(milliseconds: 150 * i), () {
+        if (!ref.mounted) return;
+        openHost(host);
+        if (i == hosts.length - 1) {
+          state = TabsState(tabs: state.tabs, active: first.clamp(1, state.tabs.length));
+        }
+      });
+    }
+  }
+
   void reconnect(String id) {
     final session = _sessions[id];
     if (session == null) return;
-    // Хост могли изменить в редакторе — берём свежую версию.
+    // Хост могли изменить в редакторе - берём свежую версию.
     final fresh = ref.read(hostsProvider).where((h) => h.id == session.host.id).firstOrNull;
     if (fresh != null) session.host = fresh;
     session.connect();

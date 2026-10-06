@@ -33,7 +33,7 @@ class DartSsh2Connector implements SshConnector {
       identities.addAll(await _parseKey(key));
     }
 
-    // DNS отдельно — чтобы в логе было видно, на каком шаге проблема.
+    // DNS отдельно - чтобы в логе было видно, на каком шаге проблема.
     var target = r.address;
     if (InternetAddress.tryParse(r.address) == null) {
       log('Поиск адреса «${r.address}» (DNS)…');
@@ -45,7 +45,7 @@ class DartSsh2Connector implements SshConnector {
         log('DNS: ${found.map((a) => a.address).join(', ')}');
         target = found.first.address;
       } catch (e) {
-        log('DNS: ошибка — $e');
+        log('DNS: ошибка: $e');
         throw SshFailure(
           SshFailureKind.network,
           'Не удалось найти хост «${r.address}»: имя не разрешается через DNS',
@@ -60,7 +60,7 @@ class DartSsh2Connector implements SshConnector {
       final raw = await Socket.connect(target, r.port, timeout: r.timeout);
       socket = _NativeSshSocket(raw);
     } catch (e) {
-      log('TCP: ошибка — $e');
+      log('TCP: ошибка: $e');
       throw SshFailure(SshFailureKind.network, _networkMessage(e, r));
     }
     log('TCP-соединение установлено за ${sw.elapsedMilliseconds} ms');
@@ -142,10 +142,10 @@ class DartSsh2Connector implements SshConnector {
     List<SSHKeyPair> parse() => SSHKeyPair.fromPem(key.pem, key.passphrase);
     try {
       try {
-        // Расшифровка ключа (bcrypt) может занять заметное время — в отдельном изоляте.
+        // Расшифровка ключа (bcrypt) может занять заметное время - в отдельном изоляте.
         return await Isolate.run(parse);
       } catch (_) {
-        // Ошибки из изолята приходят «обёрнутыми» — повторяем здесь,
+        // Ошибки из изолята приходят «обёрнутыми» - повторяем здесь,
         // чтобы получить настоящий тип исключения.
         return parse();
       }

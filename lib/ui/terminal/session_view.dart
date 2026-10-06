@@ -18,7 +18,9 @@ import '../../infra/platform/desktop_env.dart';
 import '../sftp/sftp_pane.dart';
 import '../shell/ui_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/modifiers.dart';
 import 'connection_failure_view.dart';
+import 'stable_selection.dart';
 import 'terminal_accessory_bar.dart';
 import 'terminal_theme.dart';
 import 'selection_menu.dart';
@@ -36,11 +38,17 @@ class SessionView extends ConsumerStatefulWidget {
 
 class _SessionViewState extends ConsumerState<SessionView>
     with WidgetsBindingObserver {
-  final _controller = TerminalController();
+  final _controller = StableSelectionController();
   final _focus = FocusNode(debugLabel: 'terminal');
   final _terminalViewKey = GlobalKey<TerminalViewState>();
   final _terminalStackKey = GlobalKey();
   final _scrollController = ScrollController();
+  late final _dragFix = DragSelectionFix(
+    controller: _controller,
+    viewKey: _terminalViewKey,
+    scroll: _scrollController,
+    terminal: () => _terminal,
+  );
 
   double _paneWidth = 420;
 
@@ -73,6 +81,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onSelectionChanged);
     _scrollController.addListener(_onScrollChanged);
+    _scrollController.addListener(_dragFix.onScroll);
   }
 
   @override
@@ -109,6 +118,7 @@ class _SessionViewState extends ConsumerState<SessionView>
       });
     }
 
+    // Новая попытка подключения - экран ошибки снова можно показывать.
     if (widget.tab.status == SessionStatus.connecting &&
         old.tab.status != SessionStatus.connecting) {
       _failureDismissed = false;
@@ -122,7 +132,9 @@ class _SessionViewState extends ConsumerState<SessionView>
     _longPressTimer?.cancel();
     _controller.removeListener(_onSelectionChanged);
     _scrollController.removeListener(_onScrollChanged);
+    _scrollController.removeListener(_dragFix.onScroll);
 
+    _dragFix.dispose();
     _scrollController.dispose();
     _controller.dispose();
     _focus.dispose();
@@ -339,6 +351,7 @@ class _SessionViewState extends ConsumerState<SessionView>
     _showToast(strings.pastedToast);
   }
 
+  /// true - вставить как есть, false - одной строкой, null - отмена.
   Future<bool?> _confirmPaste(List<String> lines) {
     final strings = SelectionStrings.of(
       context,
@@ -828,8 +841,7 @@ class _SessionViewState extends ConsumerState<SessionView>
   void _onSecondaryClick(Offset position, [Offset? localPosition]) {
     final action = ref.read(settingsProvider).rightClick;
 
-    if (HardwareKeyboard.instance.isShiftPressed ||
-        action == RightClickAction.menu) {
+    if (Modifiers.instance.shift || action == RightClickAction.menu) {
       _showselectionMenu(localPosition ?? position);
       return;
     }
@@ -1346,24 +1358,27 @@ class _StatusBar extends StatelessWidget {
           const SizedBox(width: 8),
           Text(status, style: style),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              tab.host.displayAddress,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          ),
-          if (!isCompact &&
-              serverVersion != null &&
-              tab.status == SessionStatus.ready) ...[
-            const SizedBox(width: 16),
-            Flexible(
+          if (isCompact) ...[
+            Expanded(
               child: Text(
-                serverVersion!,
+                tab.host.displayAddress,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: style?.copyWith(color: scheme.outline),
+                style: style,
               ),
+            ),
+          ] else ...[
+            Text(tab.host.displayAddress, style: style),
+            const SizedBox(width: 16),
+            Expanded(
+              child: serverVersion != null && tab.status == SessionStatus.ready
+                  ? Text(
+                      serverVersion!,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: style?.copyWith(color: scheme.outline),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
           const SizedBox(width: 6),

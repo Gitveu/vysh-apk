@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +13,9 @@ import '../../infra/platform/desktop_env.dart';
 import '../../infra/platform/local_files.dart';
 import '../theme/app_theme.dart';
 import 'appearance_sections.dart';
+import 'clipboard_section.dart';
+import 'performance_section.dart';
+import 'setting_row.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -23,12 +27,13 @@ class SettingsPage extends ConsumerWidget {
     final strings = AppStrings.of(context, s.language);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isMobile = DesktopEnv.isMobile;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        DesktopEnv.isMobile ? 16 : 28,
+        isMobile ? 16 : 28,
         20,
-        DesktopEnv.isMobile ? 16 : 28,
+        isMobile ? 16 : 28,
         28,
       ),
       children: [
@@ -43,86 +48,82 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.palette_outlined,
                   title: strings.appearanceSection,
                   children: [
-                    _Row(
-                      title: strings.themeTitle,
-                      child: SegmentedButton<ThemeMode>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          minimumSize: WidgetStatePropertyAll(Size(0, 64)),
-                          padding: WidgetStatePropertyAll(
-                            EdgeInsets.symmetric(horizontal: 6),
+                    // На Android весь выбор цветов вырезан: только Monet
+                    // (или фиолетовый fallback), без сегментов и свотчей.
+                    SettingRow(
+                      label: strings.themeTitle,
+                      // Сегменты должны занять всю ширину карточки, а подпись
+                      // сжиматься, а не резаться многоточием.
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            ),
+                            textStyle: WidgetStatePropertyAll(
+                              TextStyle(fontSize: 13),
+                            ),
                           ),
+                          segments: [
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(strings.themeSystem),
+                              ),
+                              icon: const Icon(Icons.brightness_auto, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(strings.themeLight),
+                              ),
+                              icon: const Icon(Icons.light_mode_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(strings.themeDark),
+                              ),
+                              icon: const Icon(Icons.dark_mode_outlined, size: 18),
+                            ),
+                          ],
+                          selected: {s.themeMode},
+                          onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
                         ),
-                        segments: [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(strings.themeSystem, maxLines: 1),
-                            ),
-                            icon: const Icon(Icons.brightness_auto, size: 18),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(strings.themeLight, maxLines: 1),
-                            ),
-                            icon: const Icon(
-                              Icons.light_mode_outlined,
-                              size: 18,
-                            ),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(strings.themeDark, maxLines: 1),
-                            ),
-                            icon: const Icon(
-                              Icons.dark_mode_outlined,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                        selected: {s.themeMode},
-                        onSelectionChanged: (v) => ctrl.setThemeMode(v.first),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    if (!DesktopEnv.isMobile) const ColorSourceSection(),
+                    const TitleBarSection(),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.density_medium),
                       title: Text(strings.compactUi),
                       value: s.compact,
                       onChanged: ctrl.setCompact,
                     ),
-                    const SizedBox(height: 8),
                   ],
                 ),
-                if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
-                  _Section(
-                    icon: Icons.web_asset,
-                    title: strings.windowSection,
-                    children: const [TitleBarSection()],
-                  ),
                 _Section(
                   icon: Icons.dns_outlined,
                   title: strings.hostsSection,
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.network_ping),
                       title: Text(strings.pingHostsTitle),
                       subtitle: Text(strings.pingHostsDesc),
                       value: s.pingHosts,
                       onChanged: ctrl.setPingHosts,
                     ),
+                    const PingSettings(),
                     const SizedBox(height: 8),
-                    _Row(
-                      title: strings.keepAliveGlobalTitle,
+                    SettingRow(
+                      label: strings.keepAliveGlobalTitle,
                       child: DropdownButton<int>(
                         value: s.keepAliveSeconds,
                         underline: const SizedBox.shrink(),
@@ -171,8 +172,8 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.terminal,
                   title: strings.terminalSection,
                   children: [
-                    _Row(
-                      title: strings.fontSizeTitle,
+                    SettingRow(
+                      label: strings.fontSizeTitle,
                       child: SizedBox(
                         width: 320,
                         child: Row(
@@ -208,7 +209,7 @@ class SettingsPage extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'root@server:~\$ htop   # font preview',
+                        'root@server:~\$ htop',
                         style: monoStyle(
                           context,
                           size: s.terminalFontSize,
@@ -219,38 +220,34 @@ class SettingsPage extends ConsumerWidget {
                     const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.text_fields),
                       title: Text(strings.rememberTerminalFontSizeTitle),
                       subtitle: Text(strings.rememberTerminalFontSizeDesc),
                       value: s.rememberTerminalFontSize,
                       onChanged: ctrl.setRememberTerminalFontSize,
                     ),
-                    const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.content_copy),
-                      title: Text(strings.copyOnSelectTitle),
-                      subtitle: Text(
-                        DesktopEnv.isDesktop
-                            ? strings.copyOnSelectDesktopDesc
-                            : strings.copyOnSelectMobileDesc,
-                      ),
-                      value: s.copyOnSelect,
-                      onChanged: ctrl.setCopyOnSelect,
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.keyboard_outlined),
                       title: Text(strings.accessoryBarTitle),
                       subtitle: Text(strings.accessoryBarDesc),
                       value: s.showAccessoryBar,
                       onChanged: ctrl.setShowAccessoryBar,
                     ),
                     const SizedBox(height: 8),
-                    if (DesktopEnv.isDesktop) ...[
-                      _Row(
-                        title: strings.languageTitle,
+                    const ClipboardSection(),
+                  ],
+                ),
+                _Section(
+                  icon: Icons.speed,
+                  title: strings.isRu ? 'Производительность' : 'Performance',
+                  children: const [PerformanceSection()],
+                ),
+                if (!isMobile) ...[
+                  _Section(
+                    icon: Icons.language,
+                    title: strings.languageTitle,
+                    children: [
+                      SettingRow(
+                        label: strings.languageTitle,
                         child: DropdownButton<AppLanguage>(
                           value: s.language,
                           underline: const SizedBox.shrink(),
@@ -273,96 +270,9 @@ class SettingsPage extends ConsumerWidget {
                               v != null ? ctrl.setLanguage(v) : null,
                         ),
                       ),
-                      const SizedBox(height: 8),
                     ],
-                    const SizedBox(height: 12),
-                    Text(
-                      DesktopEnv.isMobile
-                          ? strings.rightClickMobileTitle
-                          : strings.rightClickDesktopTitle,
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<RightClickAction>(
-                      showSelectedIcon: false,
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        minimumSize: WidgetStatePropertyAll(Size(0, 64)),
-                      ),
-                      segments: [
-                        ButtonSegment(
-                          value: RightClickAction.menu,
-                          icon: const Icon(Icons.menu_open, size: 18),
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(strings.rightClickMenu, maxLines: 1),
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: RightClickAction.paste,
-                          icon: const Icon(Icons.content_paste, size: 18),
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(strings.rightClickPaste, maxLines: 1),
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: RightClickAction.smart,
-                          icon: const Icon(Icons.auto_awesome, size: 18),
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(strings.rightClickSmart, maxLines: 1),
-                          ),
-                        ),
-                      ],
-                      selected: {s.rightClick},
-                      onSelectionChanged: (v) => ctrl.setRightClick(v.first),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      DesktopEnv.isDesktop
-                          ? '${_rightClickHint(s.rightClick, strings)} ${strings.shiftRightClickNote}'
-                          : _rightClickHint(s.rightClick, strings),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (DesktopEnv.isDesktop) ...[
-                      const SizedBox(height: 8),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        secondary: const Icon(Icons.keyboard),
-                        title: Text(strings.ctrlVPasteTitle),
-                        subtitle: Text(strings.ctrlVPasteDesc),
-                        value: s.ctrlVPaste,
-                        onChanged: ctrl.setCtrlVPaste,
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        secondary: const Icon(Icons.mouse_outlined),
-                        title: Text(
-                          strings.isRu
-                              ? 'Средняя кнопка мыши вставляет'
-                              : 'Middle click pastes',
-                        ),
-                        subtitle: Text(
-                          strings.isRu ? 'Как в Linux' : 'Linux terminal style',
-                        ),
-                        value: s.middleClickPaste,
-                        onChanged: ctrl.setMiddleClickPaste,
-                      ),
-                    ],
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const Icon(Icons.warning_amber_rounded),
-                      title: Text(strings.multilinePasteTitle),
-                      subtitle: Text(strings.multilinePasteDesc),
-                      value: s.confirmMultilinePaste,
-                      onChanged: ctrl.setConfirmMultilinePaste,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
                 _Section(
                   icon: Icons.folder_outlined,
                   title: strings.isRu ? 'Данные' : 'Data',
@@ -406,25 +316,44 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.info_outline,
                   title: strings.aboutApp,
                   children: [
-                    Text(
-                      'vysh $appVersion',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      strings.appDescription,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (buildDate.isNotEmpty)
-                      Text(
-                        'build $appBuildNumber · $buildDate',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/icon/vysh_256.png',
+                          width: 56,
+                          height: 56,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.dns_rounded, size: 56),
                         ),
-                      ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'vysh $appVersion',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              if (buildDate.isNotEmpty)
+                                Text(
+                                  'build $appBuildNumber · $buildDate',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                strings.appDescription,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              if (!kIsWeb) const _MemoryUsage(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -475,41 +404,44 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
+/// Сколько памяти занимает процесс - чтобы сравнивать сборки и версии.
+class _MemoryUsage extends StatefulWidget {
+  const _MemoryUsage();
 
   @override
+  State<_MemoryUsage> createState() => _MemoryUsageState();
+}
+
+class _MemoryUsageState extends State<_MemoryUsage> {
+  @override
   Widget build(BuildContext context) {
-    if (DesktopEnv.isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          child,
-        ],
-      );
-    }
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
-      runSpacing: 8,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    int mb = 0;
+    try {
+      mb = (ProcessInfo.currentRss / (1024 * 1024)).round();
+    } catch (_) {}
+    final style = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    return Row(
       children: [
-        SizedBox(
-          width: 140,
-          child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+        Icon(Icons.memory, size: 16, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            kDebugMode
+                ? 'Память: $mb МБ (debug)'
+                : 'Память: $mb МБ',
+            style: style,
+          ),
         ),
-        child,
+        IconButton(
+          tooltip: 'Обновить',
+          visualDensity: VisualDensity.compact,
+          iconSize: 16,
+          icon: const Icon(Icons.refresh),
+          onPressed: () => setState(() {}),
+        ),
       ],
     );
   }
 }
-
-String _rightClickHint(RightClickAction a, AppStrings strings) => switch (a) {
-  RightClickAction.menu => strings.rightClickHintMenu,
-  RightClickAction.paste => strings.rightClickHintPaste,
-  RightClickAction.smart => strings.rightClickHintSmart,
-};

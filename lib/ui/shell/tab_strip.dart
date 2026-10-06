@@ -88,7 +88,7 @@ class TabStrip extends ConsumerWidget {
         children: [
           Expanded(
             // Свой заголовок: пустое место справа от вкладок таскает окно,
-            // двойной клик — развернуть/восстановить.
+            // двойной клик - развернуть/восстановить.
             child: custom
                 ? Stack(
                     children: [
@@ -138,8 +138,14 @@ class _HomeTab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.terminal_rounded, size: 18,
-                  color: selected ? scheme.onSecondaryContainer : scheme.primary),
+              // Декодируем сразу в нужном размере, а не все 256×256.
+              Image.asset(
+                'assets/icon/vysh_256.png',
+                width: 18,
+                height: 18,
+                cacheWidth: (18 * MediaQuery.devicePixelRatioOf(context)).ceil(),
+                filterQuality: FilterQuality.medium,
+              ),
               const SizedBox(width: 8),
               Text('vysh',
                   style: TextStyle(

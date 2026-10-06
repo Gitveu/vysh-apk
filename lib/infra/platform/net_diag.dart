@@ -22,15 +22,19 @@ class NetDiag {
   Socket? _socket;
   bool _stopped = false;
 
-  void start() {
-    scheduleMicrotask(() async {
-      if (kIsWeb) {
-        _out.add(
-          'Сетевая диагностика через системные утилиты недоступна в веб-версии.',
-        );
-        await _out.close();
-        return;
-      }
+  Future<void> start() async {
+    if (kIsWeb) {
+      _out.add('Сетевая диагностика через системные утилиты недоступна в веб-версии.');
+      await _out.close();
+      return;
+    }
+    // Адрес уходит в командную строку - пускаем только безопасные символы.
+    if (!RegExp(r'^[A-Za-z0-9.:_\-]+$').hasMatch(host)) {
+      _out.add('Недопустимый адрес: $host');
+      await _out.close();
+      return;
+    }
+    try {
       switch (kind) {
         case DiagKind.port:
           await _checkPort();
@@ -53,8 +57,11 @@ class NetDiag {
             );
           }
       }
+    } catch (e) {
+      _out.add('Ошибка диагностики: $e');
+    } finally {
       await _out.close();
-    });
+    }
   }
 
   void stop() {
@@ -64,21 +71,20 @@ class NetDiag {
   }
 
   Future<void> _checkPort() async {
-    _out.add('Проверка TCP-порта $port на $host...');
-    final sw = Stopwatch()..start();
-    try {
-      final s = await Socket.connect(
-        host,
-        port,
-        timeout: const Duration(seconds: 5),
-      );
-      _socket = s;
-      sw.stop();
-      _out.add('✓ Порт $port открыт (ответ за ${sw.elapsedMilliseconds} ms)');
-      s.destroy();
-    } catch (e) {
-      sw.stop();
-      _out.add('✗ Порт $port недоступен: $e');
+    for (var i = 1; i <= 3 && !_stopped; i++) {
+      final sw = Stopwatch()..start();
+      try {
+        final s = await Socket.connect(host, port, timeout: const Duration(seconds: 4));
+        _socket = s;
+        sw.stop();
+        _out.add('TCP $host:$port: открыт, ${sw.elapsedMilliseconds} мс');
+        s.destroy();
+      } on SocketException catch (e) {
+        _out.add('TCP $host:$port: ${e.osError?.message ?? e.message}');
+      } catch (e) {
+        _out.add('TCP $host:$port: $e');
+      }
+      if (i < 3 && !_stopped) await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 
@@ -86,29 +92,27 @@ class NetDiag {
     _out.add('\$ ${cmd.join(' ')}');
     try {
       final p = (!kIsWeb && Platform.isWindows)
-          ? await Process.start('cmd', [
-              '/c',
-              'chcp 65001 >nul & ${cmd.join(' ')}',
-            ])
-          : await Process.start(
-              cmd.first,
-              cmd.sublist(1),
-              environment: {'LC_ALL': 'C'},
-            );
+          ? await Process.start('cmd', ['/c', 'chcp 65001 >nul & ${cmd.join(' ')}'])
+          : await Process.start(cmd.first, cmd.sublist(1), environment: {'LC_ALL': 'C'});
       _process = p;
       final lines = p.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter());
-      await for (final line in lines) {
-        if (_stopped) break;
-        if (line.trim().isNotEmpty) _out.add(line);
-      }
-      final err = await p.stderr
+          .transform(const LineSplitter())
+          .where((l) => l.trim().isNotEmpty);
+      final err = p.stderr
           .transform(const Utf8Decoder(allowMalformed: true))
-          .join();
-      if (err.trim().isNotEmpty) _out.add(err);
+          .transform(const LineSplitter())
+          .where((l) => l.trim().isNotEmpty);
+      await Future.wait([
+        lines.forEach(_out.add),
+        err.forEach(_out.add),
+      ]);
       final code = await p.exitCode;
-      if (code != 0) _out.add('Код завершения: $code');
+      if (_stopped) {
+        _out.add('[остановлено]');
+      } else if (code != 0) {
+        _out.add('[завершено с кодом $code]');
+      }
     } catch (e) {
       _out.add('Не удалось запустить команду: $e');
     }
