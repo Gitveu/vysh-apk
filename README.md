@@ -1,161 +1,101 @@
 <div align="center">
 
-<img src="assets/icon/vysh.png" width="128" alt="">
+<img src="assets/icon/vysh.png" width="128" alt="vysh logo">
 
-# vysh
+# vysh-apk
 
-**Минималистичный и красивый SSH-менеджер для Android, Windows и Linux**
+**Минималистичный и быстрый SSH-клиент для Android на базе Flutter**
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)
-![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=black)
-![Material 3](https://img.shields.io/badge/Material-3%20%2F%20You-757575?logo=materialdesign&logoColor=white)
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=black)](https://android.com)
+[![Architecture](https://img.shields.io/badge/ABI-arm64--v8a%20%7C%20armeabi--v7a-blue)](#установка)
+[![Material 3](https://img.shields.io/badge/Material%203-Dynamic%20Color-757575?logo=materialdesign&logoColor=white)](https://m3.material.io)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[Скачать](../../releases/latest) · [Возможности](#возможности) · [Горячие клавиши](#горячие-клавиши) · [Темы](docs/THEMES.md) · [Что нового](CHANGELOG.md) · [Сборка](#сборка-из-исходников)
+[Скачать APK](../../releases/latest) · [Возможности](#возможности) · [Установка](#установка) · [Сборка](#сборка-из-исходников) · [Благодарности](#credits)
 
 </div>
 
-<p align="center"><img src="docs/screenshot.png" width="900" alt="vysh"></p>
+<p align="center">
+  <img src="docs/demo.png" width="360" alt="vysh-apk screenshot">
+</p>
+
+---
+
+## О проекте
+
+vysh-apk — это адаптация десктопного SSH-менеджера vysh для мобильных устройств под управлением Android. Приложение сочетает полноценный терминал, встроенный SFTP-клиент и интерфейс в стиле Material You с динамическими системными цветами.
 
 ---
 
 ## Возможности
 
-### 🖥 Хосты и вкладки
-- Карточки серверов с группами, цветными метками и поиском
-- Быстрое подключение: набери `user@host:port` в поиске и нажми Enter
-- Индикатор доступности хоста (можно отключить для продовых серверов)
-- Вкладки с перетаскиванием, дублированием и статусом соединения
-- Массовые действия: отметьте несколько хостов (долгий тап / Ctrl+клик) или целую группу, чтобы подключиться ко всем разом или удалить
+- **Хосты и сессии**: группировка, цветовые метки, быстрый коннект через поисковую строку (`user@host:port`), пинг доступности и работа с несколькими вкладками параллельно.
+- **Терминал**: поддержка `htop`, `mc`, `vim`, 256 цветов и truecolor; дополнительная строка функциональных клавиш над клавиатурой (Ctrl, Esc, стрелки, Tab); защита от случайной вставки многострочных команд; история вывода до 1 млн строк.
+- **Аутентификация**: пароли, ключи OpenSSH (включая защищённые парольной фразой), keyboard-interactive (2FA/PAM); проверка отпечатков хостов (Host Key Verification).
+- **Встроенный SFTP**: двухпанельная работа с файлами, загрузка в системную папку «Загрузки» без лишних разрешений (через MediaStore), очередь передачи данных, открытие и автообновление файлов через внешние редакторы.
+- **Интеграция с Android**: полная поддержка динамической палитры Monet (Material You), тематическая иконка, фоновая работа сессий без разрывов и безопасное хранение учетных данных в Android Keystore.
+- **Оптимизация**: рендеринг через Skia для минимального потребления оперативной памяти и заряда аккумулятора.
 
-### ⌨️ Терминал
-- Полноценный эмулятор: `htop`, `mc`, `vim`, 256 цветов и truecolor, мышь
-- Вставка клавишами `Ctrl+Shift+C/V` (или через правый клик / тап-меню); подтверждение перед вставкой нескольких строк, чтобы случайно не запустить команды
-- Выделение с автопрокруткой; история от 1 тыс. до 1 млн строк, на выбор
-- Строка горячих клавиш (Ctrl, Esc, стрелки) над клавиатурой на телефоне
-- Переподключение по Enter после обрыва
-
-### 🔐 Подключение
-- Пароль, ключ (OpenSSH, с парольной фразой), стандартные ключи из `~/.ssh`
-- Пароль можно ввести сразу в карточке хоста или при подключении, с сохранением или без
-- keyboard-interactive: PAM, одноразовые коды
-- Проверка ключа сервера: предупреждение при первом подключении и при смене ключа
-- Пароли хранятся в системном хранилище: Android Keystore, DPAPI на Windows, Secret Service (gnome-keyring / KWallet) на Linux
-
-### 📁 SFTP
-- Панель файлов рядом с терминалом поверх того же соединения
-- Перетаскивание файлов и папок из проводника для загрузки
-- Скачивание в общую папку **Download** через MediaStore — без запроса разрешений, файл сразу виден в «Загрузках»
-- Очередь передач с прогрессом и скоростью, кнопка «открыть папку»
-- Двойной клик открывает файл в локальном редакторе, после сохранения он сам зальётся обратно
-- Переименование, удаление, права доступа (`chmod`), новые папки
-
-### 🩺 Диагностика
-- Экран ошибки подключения с понятным объяснением и подробным журналом
-- Пинг, трассировка и проверка порта прямо из приложения
-
-### 🎨 Внешний вид
-- **Android: Monet / Material You** — тема подхватывает акцент прямо из системы, иконка тоже Monet; без настроек, всё само
-- Windows / Linux: акцент системы или цвета из дотов (caelestia, pywal подхватываются сами, matugen и wallust через готовые шаблоны) → [docs/THEMES.md](docs/THEMES.md)
-- Светлая и тёмная темы; тема терминала подстраивается под акцент
-- Свой заголовок окна с вкладками на Windows, GNOME и KDE; в тайлинговых WM (Hyprland, sway, i3) обычное окно без рамок и хаков
-- Экономный: отрисовка через Skia (в 2-3 раза меньше памяти, чем с Impeller), фоновые проверки только когда их видно
+---
 
 ## Установка
 
-### Android
-1. Скачайте `vysh.<версия>.arm64-v8a.apk` (современные телефоны) или `vysh.<версия>.armeabi-v7a.apk` (старые) со страницы [релизов](../../releases/latest)
-2. Откройте файл — Android спросит разрешение на установку из неизвестного источника (один раз)
-3. Для SSH-сессий в фоне: при первом подключении приложение предложит отключить оптимизацию батареи
+Готовые установочные пакеты доступны на странице [релизов](../../releases/latest):
 
-> Приложения нет в Google Play — только APK из релизов.
+1. Скачайте APK-файл нужной архитектуры:
+   - `vysh.<версия>.arm64-v8a.apk` — для большинства современных устройств (64-bit).
+   - `vysh.<версия>.armeabi-v7a.apk` — для более старых 32-битных устройств.
+2. Установите APK, разрешив установку из внешних источников при первом открытии.
+3. При необходимости длительных фоновых сессий отключите оптимизацию батареи для приложения по запросу в интерфейсе.
 
-### Windows
-1. Скачайте `vysh-<версия>-windows-x64.zip` со страницы [релизов](../../releases/latest)
-2. Распакуйте в любую папку и запустите `vysh.exe`
+Для обновления просто установите новый APK поверх текущего — все хосты, ключи и настройки сохранятся.
 
-> При первом запуске Windows SmartScreen может предупредить о неизвестном издателе:
-> «Подробнее» → «Выполнить в любом случае».
+---
 
-### Linux
-```sh
-mkdir -p ~/.local/opt/vysh
-tar -xzf vysh-<версия>-linux-x64.tar.gz -C ~/.local/opt/vysh
-~/.local/opt/vysh/vysh
-```
-Нужны `libgtk-3` и `libsecret-1`, в дистрибутивах с графическим окружением они обычно уже есть.
+## Хранение данных
 
-### Обновление
-Android: установите новый APK поверх старого. Windows/Linux: удалите папку со старой версией и распакуйте новую. Хосты, настройки и пароли хранятся отдельно и никуда не денутся.
-
-## Где хранятся данные
-
-| | Android | Windows | Linux |
-|---|---|---|---|
-| Хосты, настройки, `known_hosts.json` | данные приложения | `%APPDATA%\vysh` | `~/.config/vysh` |
-| Пароли и парольные фразы | Android Keystore | DPAPI (учётная запись) | Secret Service (gnome-keyring, KWallet, KeePassXC) |
-
-Скачанные через SFTP файлы — в общей папке **Download** (MediaStore).
-
-## Горячие клавиши
-
-| Действие | Клавиши |
+| Данные | Расположение |
 |---|---|
-| Новая вкладка / быстрое подключение | `Ctrl+Shift+T` |
-| Закрыть вкладку | `Ctrl+Shift+W` |
-| Следующая / предыдущая вкладка | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
-| Вкладка по номеру (1 = главная) | `Alt+1…9` |
-| Новый хост | `Ctrl+Shift+N` |
-| Переподключить | `Ctrl+Shift+R` |
-| Панель файлов (SFTP) | `Ctrl+Shift+E` |
-| Копировать / вставить | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
-| Настройки | `Ctrl+,` |
+| Профили хостов, настройки, `known_hosts.json` | Внутреннее изолированное хранилище приложения |
+| Пароли и секретные ключи | Android Keystore |
+| Загрузки через SFTP | Общедоступная системная папка `Download` (MediaStore) |
 
-Все сочетания с `Shift`, чтобы не отбирать у терминала `Ctrl+W`, `Ctrl+R` и прочие.
+---
 
 ## Сборка из исходников
 
-Нужен [Flutter](https://docs.flutter.dev/get-started/install) (stable); для Windows — Visual Studio 2022 с компонентами «Desktop development with C++» и «C++ ATL».
+Для сборки требуется настроенный [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable-канал) и Android SDK:
 
-```sh
-git clone https://github.com/vyto4ka/vysh && cd vysh
+```bash
+git clone https://github.com/Gitveu/vysh-apk.git
+cd vysh-apk
 flutter pub get
-flutter run -d android   # или: -d windows / -d linux
 ```
 
-Релизный APK (по ABI, с датой сборки):
-```sh
+Сборка релизных APK с разделением по архитектурам:
+
+```bash
 flutter build apk --split-per-abi --release \
   --dart-define="BUILD_DATE=$(date '+%d.%m.%y %H:%M:%S')"
-# → build/app/outputs/flutter-apk/vysh.<версия>.arm64-v8a.apk и т.д.
 ```
 
-Релизная сборка для Windows одним скриптом:
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\build-windows.ps1
-# → dist\vysh-<версия>-windows-x64.zip
-```
+Файлы сборки будут находиться в каталоге `build/app/outputs/flutter-apk/`.
 
-Для Linux дополнительно: `ninja-build libgtk-3-dev libsecret-1-dev`, затем `flutter build linux --release`.
+---
 
-### Релизы
-Сборки делает GitHub Actions: тег `vX.Y.Z` → Windows-zip и Linux-архив в [Releases](../../releases), текст релиза берётся из [CHANGELOG.md](CHANGELOG.md). Порядок действий описан в [docs/RELEASING.md](docs/RELEASING.md).
+## Стек технологий
 
-## Стек
+- [Flutter](https://flutter.dev) & [Dart](https://dart.dev)
+- [Riverpod](https://riverpod.dev) — управление состоянием
+- [dartssh2](https://pub.dev/packages/dartssh2) — SSHv2 и SFTP-протоколы
+- [xterm2](https://pub.dev/packages/xterm2) — эмуляция терминала
+- [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) — работа с Keystore
 
-[Flutter](https://flutter.dev) · [Riverpod](https://riverpod.dev) · [dartssh2](https://pub.dev/packages/dartssh2) (SSH и SFTP) · [xterm2](https://pub.dev/packages/xterm2) (терминал) · [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)
+---
 
-Подробности в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), история изменений в [CHANGELOG.md](CHANGELOG.md).
+## Credits
 
-## Планы
-
-- [x] Хосты, вкладки, терминал
-- [x] Пароли и ключи, проверка ключа сервера
-- [x] SFTP с очередью передач
-- [x] Диагностика подключения
-- [x] Android: Monet-тема, скачивание в Download через MediaStore
-- [x] Цвета из системы и дотов (Windows / Linux): акцент, pywal, matugen, caelestia
-- [x] Свой заголовок окна с вкладками (Windows / GNOME / KDE)
-- [ ] F-Droid, Google Play
-- [ ] AppImage, .deb, AUR, установщик для Windows
-- [ ] Сниппеты, проброс портов, jump host, разделение вкладки на панели
-- [ ] ssh-agent / Pageant, хранилище с мастер-паролем
+- Оригинальный проект и десктопная версия: [vyto4ka/vysh](https://github.com/vyto4ka/vysh)
+- Портирование и адаптация под Android: [Gitveu/vysh-apk](https://github.com/Gitveu/vysh-apk)
