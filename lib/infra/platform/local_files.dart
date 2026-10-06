@@ -1,8 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-
-import '../storage/app_paths.dart';
+import 'package:flutter/services.dart';
 
 /// Работа с локальными файлами и системными приложениями.
 class LocalFiles {
@@ -27,16 +26,34 @@ class LocalFiles {
     }
   }
 
-  /// Папка «Загрузки» по умолчанию.
+  // ─── Общая папка Download на Android ────────────────────────────
+
+  static const _filesChannel = MethodChannel('com.vysh.vysh/local_files');
+
+  /// Публичная Download доступна без разрешений: файл качается во временную
+  /// папку и публикуется через MediaStore.Downloads (Android 10+).
+  /// Возвращает null, если файл опубликовать не удалось.
+  static Future<String?> saveToDownloads(String tempPath, String name,
+      {String? mimeType}) async {
+    if (kIsWeb) return null;
+    try {
+      return await _filesChannel.invokeMethod<String>('saveToDownloads', {
+        'tempPath': tempPath,
+        'name': name,
+        'mimeType': mimeType,
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// На Android качаем во временную папку (файл потом уходит в Download),
+  /// на остальных — сразу в «Загрузки».
   static String defaultDownloadsDir() {
     if (kIsWeb) return 'Downloads';
     try {
       if (Platform.isAndroid) {
-        const androidDownload = '/storage/emulated/0/Download';
-        if (Directory(androidDownload).existsSync()) {
-          return androidDownload;
-        }
-        return AppPaths.configDir.path;
+        return Directory.systemTemp.path;
       }
       if (Platform.isLinux) {
         // XDG_DOWNLOAD_DIR из ~/.config/user-dirs.dirs (бывает «Загрузки»).
@@ -112,6 +129,10 @@ class LocalFiles {
         final isDir = Directory(path).existsSync();
         await Process.start('explorer', isDir ? [path] : ['/select,$path'],
             mode: ProcessStartMode.detached);
+      } else if (Platform.isAndroid) {
+        // Файловый менеджер открываем через платформенный канал:
+        // Process.start на Android не работает.
+        await _filesChannel.invokeMethod('revealPath', {'path': path});
       } else if (Platform.isLinux || Platform.isMacOS) {
         final target = Directory(path).existsSync() ? path : File(path).parent.path;
         await openWithSystem(target);

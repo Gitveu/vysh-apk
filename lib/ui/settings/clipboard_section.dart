@@ -52,20 +52,6 @@ class ClipboardSection extends ConsumerWidget {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(strings.middleClickPasteTitle),
-          subtitle: Text(strings.middleClickPasteDesc),
-          value: s.middleClickPaste,
-          onChanged: ctrl.setMiddleClickPaste,
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(strings.ctrlVPasteTitle),
-          subtitle: Text(strings.ctrlVPasteDesc),
-          value: s.ctrlVPaste,
-          onChanged: ctrl.setCtrlVPaste,
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
           title: Text(strings.confirmMultilinePasteTitle),
           subtitle: Text(strings.confirmMultilinePasteDesc),
           value: s.confirmMultilinePaste,

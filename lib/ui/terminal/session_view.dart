@@ -924,12 +924,6 @@ class _SessionViewState extends ConsumerState<SessionView>
       _cancelSinglePointerGesture();
     }
 
-    if (ref.read(settingsProvider).middleClickPaste &&
-        (event.buttons & kMiddleMouseButton) != 0) {
-      _paste();
-      return;
-    }
-
     if ((event.buttons & kSecondaryMouseButton) != 0) {
       _onSecondaryClick(event.position, event.localPosition);
       return;
@@ -1042,8 +1036,8 @@ class _SessionViewState extends ConsumerState<SessionView>
     });
   }
 
-  Map<ShortcutActivator, Intent> _shortcuts(bool ctrlV) {
-    final map = <ShortcutActivator, Intent>{
+  Map<ShortcutActivator, Intent> _shortcuts() {
+    return <ShortcutActivator, Intent>{
       for (final entry in defaultTerminalShortcuts.entries)
         if (entry.value is! PasteTextIntent) entry.key: entry.value,
       const SingleActivator(
@@ -1054,13 +1048,6 @@ class _SessionViewState extends ConsumerState<SessionView>
       const SingleActivator(LogicalKeyboardKey.insert, shift: true):
           const _PasteIntent(),
     };
-
-    if (ctrlV) {
-      map[const SingleActivator(LogicalKeyboardKey.keyV, control: true)] =
-          const _PasteIntent();
-    }
-
-    return map;
   }
 
   void _reconnect() {
@@ -1119,7 +1106,7 @@ class _SessionViewState extends ConsumerState<SessionView>
             controller: _controller,
             focusNode: _focus,
             autofocus: true,
-            shortcuts: _shortcuts(settings.ctrlVPaste),
+            shortcuts: _shortcuts(),
             theme: terminalThemeFor(scheme, ext),
             textStyle: TerminalStyle(
               fontSize: _effectiveFontSize,

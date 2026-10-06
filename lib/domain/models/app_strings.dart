@@ -197,10 +197,6 @@ class AppStrings {
   String get shiftRightClickNote => isRu
       ? 'Shift + правый клик всегда открывает меню.'
       : 'Shift + right click always opens the menu.';
-  String get ctrlVPasteTitle => isRu ? 'Ctrl+V вставляет' : 'Ctrl+V pastes';
-  String get ctrlVPasteDesc => isRu
-      ? 'Как в Windows. Выключено — Ctrl+V уходит в терминал (нужно, например, в vim)'
-      : 'Windows style. When off, Ctrl+V passes directly to the terminal (e.g., for vim)';
   String get multilinePasteTitle => isRu
       ? 'Предупреждать при вставке нескольких строк'
       : 'Warn before multiline paste';
@@ -211,8 +207,6 @@ class AppStrings {
       ? 'Выделенный текст сразу попадает в буфер обмена'
       : 'Copy highlighted text immediately';
   String get rightClickTitle => isRu ? 'Правый клик' : 'Right click';
-  String get middleClickPasteTitle => isRu ? 'Средняя кнопка мыши' : 'Middle click paste';
-  String get middleClickPasteDesc => isRu ? 'Вставка кликом на колёсико мыши' : 'Paste with wheel click';
   String get confirmMultilinePasteTitle => isRu ? 'Предупреждать при многострочной вставке' : 'Confirm multiline paste';
   String get confirmMultilinePasteDesc => isRu ? 'Защита от случайного выполнения команд' : 'Protection from accidental command execution';
   String get downloadsDirTitle =>

@@ -44,13 +44,14 @@ class Transfer {
     TransferStatus? status,
     String? error,
     double? bytesPerSecond,
+    String? localPath,
   }) =>
       Transfer(
         id: id,
         tabId: tabId,
         direction: direction,
         name: name,
-        localPath: localPath,
+        localPath: localPath ?? this.localPath,
         remotePath: remotePath,
         total: total,
         done: done ?? this.done,
@@ -127,6 +128,18 @@ class TransferQueue extends Notifier<List<Transfer>> {
 
   void clearFinished(String tabId) {
     state = state.where((t) => t.tabId != tabId || t.isActive).toList();
+  }
+
+  /// После публикации temp-файла в общую Download путь в карточке
+  /// передачи должен вести туда, где файл реально лежит.
+  void updatePath(String tabId, String fromPath, String toPath) {
+    if (!ref.mounted) return;
+    state = [
+      for (final t in state)
+        t.tabId == tabId && t.localPath == fromPath
+            ? t.copyWith(localPath: toPath)
+            : t,
+    ];
   }
 
   void _pump() {

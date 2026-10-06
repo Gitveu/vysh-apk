@@ -123,6 +123,11 @@ class SftpActions {
       run: (cancel, progress) async {
         try {
           await sftp.download(e.path, local, cancel: cancel, onProgress: progress);
+          // На Android temp-файл публикуем в общую Download через MediaStore.
+          final published = await LocalFiles.saveToDownloads(local.path, e.name);
+          if (published != null) {
+            queue.updatePath(tabId, local.path, published);
+          }
         } catch (_) {
           // Недокачанный файл не оставляем.
           try {

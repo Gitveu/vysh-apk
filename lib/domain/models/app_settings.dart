@@ -75,8 +75,6 @@ class AppSettings {
     this.downloadsDir = '',
     this.pingHosts = true,
     this.rightClick = RightClickAction.menu,
-    this.middleClickPaste = false,
-    this.ctrlVPaste = false,
     this.confirmMultilinePaste = true,
     this.colorSource = ColorSource.preset,
     this.dotsPath = '',
@@ -117,12 +115,6 @@ class AppSettings {
   final int keepAliveSeconds;
 
   final RightClickAction rightClick;
-
-  /// Вставка средней кнопкой мыши (как в Linux).
-  final bool middleClickPaste;
-
-  /// Ctrl+V вставляет (по умолчанию Ctrl+V уходит в терминал как есть).
-  final bool ctrlVPaste;
 
   /// Спрашивать перед вставкой нескольких строк.
   final bool confirmMultilinePaste;
@@ -167,8 +159,6 @@ class AppSettings {
     String? downloadsDir,
     bool? pingHosts,
     RightClickAction? rightClick,
-    bool? middleClickPaste,
-    bool? ctrlVPaste,
     bool? confirmMultilinePaste,
     ColorSource? colorSource,
     String? dotsPath,
@@ -195,8 +185,6 @@ class AppSettings {
         downloadsDir: downloadsDir ?? this.downloadsDir,
         pingHosts: pingHosts ?? this.pingHosts,
         rightClick: rightClick ?? this.rightClick,
-        middleClickPaste: middleClickPaste ?? this.middleClickPaste,
-        ctrlVPaste: ctrlVPaste ?? this.ctrlVPaste,
         confirmMultilinePaste:
             confirmMultilinePaste ?? this.confirmMultilinePaste,
         colorSource: colorSource ?? this.colorSource,
@@ -224,8 +212,6 @@ class AppSettings {
         'downloadsDir': downloadsDir,
         'pingHosts': pingHosts,
         'rightClick': rightClick.name,
-        'middleClickPaste': middleClickPaste,
-        'ctrlVPaste': ctrlVPaste,
         'confirmMultilinePaste': confirmMultilinePaste,
         'colorSource': colorSource.name,
         'dotsPath': dotsPath,
@@ -263,8 +249,6 @@ class AppSettings {
           (a) => a.name == json['rightClick'],
           orElse: () => RightClickAction.menu,
         ),
-        middleClickPaste: json['middleClickPaste'] as bool? ?? false,
-        ctrlVPaste: json['ctrlVPaste'] as bool? ?? false,
         confirmMultilinePaste: json['confirmMultilinePaste'] as bool? ?? true,
         colorSource: ColorSource.values.firstWhere(
           (c) => c.name == json['colorSource'],
