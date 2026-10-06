@@ -209,12 +209,6 @@ class AppStrings {
   String get rightClickTitle => isRu ? 'Правый клик' : 'Right click';
   String get confirmMultilinePasteTitle => isRu ? 'Предупреждать при многострочной вставке' : 'Confirm multiline paste';
   String get confirmMultilinePasteDesc => isRu ? 'Защита от случайного выполнения команд' : 'Protection from accidental command execution';
-  String get downloadsDirTitle =>
-      isRu ? 'Папка для скачивания файлов' : 'Downloads directory';
-  String get downloadsDefaultNote =>
-      isRu ? 'Системная папка «Загрузки»' : 'Default system Downloads folder';
-  String get chooseFolder => isRu ? 'Выбрать' : 'Browse';
-  String get resetDefault => isRu ? 'Сбросить' : 'Reset';
   String get aboutApp => isRu ? 'О программе' : 'About';
   String get appDescription => isRu
       ? 'Минималистичный и красивый SSH-клиент и менеджер подключений.'

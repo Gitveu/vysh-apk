@@ -4,13 +4,11 @@
 
 # vysh
 
-**Минималистичный и красивый SSH-менеджер для Windows и Linux**
+**Минималистичный и красивый SSH-менеджер для Android, Windows и Linux**
 
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)
-![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)
-![Material 3](https://img.shields.io/badge/Material-3-757575?logo=materialdesign&logoColor=white)
+![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=black)
+![Material 3](https://img.shields.io/badge/Material-3%20%2F%20You-757575?logo=materialdesign&logoColor=white)
 
 [Скачать](../../releases/latest) · [Возможности](#возможности) · [Горячие клавиши](#горячие-клавиши) · [Темы](docs/THEMES.md) · [Что нового](CHANGELOG.md) · [Сборка](#сборка-из-исходников)
 
@@ -27,13 +25,13 @@
 - Быстрое подключение: набери `user@host:port` в поиске и нажми Enter
 - Индикатор доступности хоста (можно отключить для продовых серверов)
 - Вкладки с перетаскиванием, дублированием и статусом соединения
-- Массовые действия: отметьте несколько хостов (Ctrl+клик) или целую группу, чтобы подключиться ко всем разом или удалить
+- Массовые действия: отметьте несколько хостов (долгий тап / Ctrl+клик) или целую группу, чтобы подключиться ко всем разом или удалить
 
 ### ⌨️ Терминал
 - Полноценный эмулятор: `htop`, `mc`, `vim`, 256 цветов и truecolor, мышь
-- Копирование и вставка на выбор: как в Linux (выделение + средняя кнопка) или клавишами `Ctrl+Shift+C/V`; правый клик тоже может вставлять
-- Подтверждение перед вставкой нескольких строк, чтобы случайно не запустить команды
-- Выделение мышью с автопрокруткой; история от 1 тыс. до 1 млн строк, на выбор
+- Вставка клавишами `Ctrl+Shift+C/V` (или через правый клик / тап-меню); подтверждение перед вставкой нескольких строк, чтобы случайно не запустить команды
+- Выделение с автопрокруткой; история от 1 тыс. до 1 млн строк, на выбор
+- Строка горячих клавиш (Ctrl, Esc, стрелки) над клавиатурой на телефоне
 - Переподключение по Enter после обрыва
 
 ### 🔐 Подключение
@@ -41,12 +39,13 @@
 - Пароль можно ввести сразу в карточке хоста или при подключении, с сохранением или без
 - keyboard-interactive: PAM, одноразовые коды
 - Проверка ключа сервера: предупреждение при первом подключении и при смене ключа
-- Пароли хранятся в системном хранилище: DPAPI на Windows, Secret Service (gnome-keyring / KWallet) на Linux
+- Пароли хранятся в системном хранилище: Android Keystore, DPAPI на Windows, Secret Service (gnome-keyring / KWallet) на Linux
 
 ### 📁 SFTP
 - Панель файлов рядом с терминалом поверх того же соединения
 - Перетаскивание файлов и папок из проводника для загрузки
-- Скачивание файлов и папок, очередь передач с прогрессом и скоростью
+- Скачивание в общую папку **Download** через MediaStore — без запроса разрешений, файл сразу виден в «Загрузках»
+- Очередь передач с прогрессом и скоростью, кнопка «открыть папку»
 - Двойной клик открывает файл в локальном редакторе, после сохранения он сам зальётся обратно
 - Переименование, удаление, права доступа (`chmod`), новые папки
 
@@ -55,15 +54,20 @@
 - Пинг, трассировка и проверка порта прямо из приложения
 
 ### 🎨 Внешний вид
-- Material 3 / Material You, светлая и тёмная темы, 9 акцентных цветов
-- Цвета из системы: акцент Windows или xdg-portal (GNOME, KDE)
-- Цвета из дотов: caelestia и pywal подхватываются сами, matugen и wallust через готовые шаблоны; обновляются на лету при смене обоев → [docs/THEMES.md](docs/THEMES.md)
-- Тема терминала подстраивается под акцент, а с дотами берёт их 16 цветов
+- **Android: Monet / Material You** — тема подхватывает акцент прямо из системы, иконка тоже Monet; без настроек, всё само
+- Windows / Linux: акцент системы или цвета из дотов (caelestia, pywal подхватываются сами, matugen и wallust через готовые шаблоны) → [docs/THEMES.md](docs/THEMES.md)
+- Светлая и тёмная темы; тема терминала подстраивается под акцент
 - Свой заголовок окна с вкладками на Windows, GNOME и KDE; в тайлинговых WM (Hyprland, sway, i3) обычное окно без рамок и хаков
-- Экономный: отрисовка через Skia (в 2-3 раза меньше памяти, чем с Impeller), фоновые проверки только когда их видно, всё настраивается
-- Окно открывается там же и того же размера, где его закрыли (на Wayland позицию решает композитор)
+- Экономный: отрисовка через Skia (в 2-3 раза меньше памяти, чем с Impeller), фоновые проверки только когда их видно
 
 ## Установка
+
+### Android
+1. Скачайте `vysh.<версия>.arm64-v8a.apk` (современные телефоны) или `vysh.<версия>.armeabi-v7a.apk` (старые) со страницы [релизов](../../releases/latest)
+2. Откройте файл — Android спросит разрешение на установку из неизвестного источника (один раз)
+3. Для SSH-сессий в фоне: при первом подключении приложение предложит отключить оптимизацию батареи
+
+> Приложения нет в Google Play — только APK из релизов.
 
 ### Windows
 1. Скачайте `vysh-<версия>-windows-x64.zip` со страницы [релизов](../../releases/latest)
@@ -81,16 +85,16 @@ tar -xzf vysh-<версия>-linux-x64.tar.gz -C ~/.local/opt/vysh
 Нужны `libgtk-3` и `libsecret-1`, в дистрибутивах с графическим окружением они обычно уже есть.
 
 ### Обновление
-Удалите папку со старой версией и распакуйте новую. Хосты, настройки и пароли хранятся отдельно и никуда не денутся.
+Android: установите новый APK поверх старого. Windows/Linux: удалите папку со старой версией и распакуйте новую. Хосты, настройки и пароли хранятся отдельно и никуда не денутся.
 
 ## Где хранятся данные
 
-| | Windows | Linux |
-|---|---|---|
-| Хосты, настройки, `known_hosts.json` | `%APPDATA%\vysh` | `~/.config/vysh` |
-| Пароли и парольные фразы | DPAPI (привязаны к учётной записи) | Secret Service (gnome-keyring, KWallet, KeePassXC) |
+| | Android | Windows | Linux |
+|---|---|---|---|
+| Хосты, настройки, `known_hosts.json` | данные приложения | `%APPDATA%\vysh` | `~/.config/vysh` |
+| Пароли и парольные фразы | Android Keystore | DPAPI (учётная запись) | Secret Service (gnome-keyring, KWallet, KeePassXC) |
 
-Файлы с хостами и настройками это обычный JSON без секретов: их можно хранить в git или синхронизировать через Syncthing.
+Скачанные через SFTP файлы — в общей папке **Download** (MediaStore).
 
 ## Горячие клавиши
 
@@ -110,12 +114,19 @@ tar -xzf vysh-<версия>-linux-x64.tar.gz -C ~/.local/opt/vysh
 
 ## Сборка из исходников
 
-Нужны [Flutter](https://docs.flutter.dev/get-started/install) (stable), а для Windows ещё Visual Studio 2022 с компонентами «Desktop development with C++» и «C++ ATL».
+Нужен [Flutter](https://docs.flutter.dev/get-started/install) (stable); для Windows — Visual Studio 2022 с компонентами «Desktop development with C++» и «C++ ATL».
 
 ```sh
 git clone https://github.com/vyto4ka/vysh && cd vysh
 flutter pub get
-flutter run -d windows   # или: -d linux
+flutter run -d android   # или: -d windows / -d linux
+```
+
+Релизный APK (по ABI, с датой сборки):
+```sh
+flutter build apk --split-per-abi --release \
+  --dart-define="BUILD_DATE=$(date '+%d.%m.%y %H:%M:%S')"
+# → build/app/outputs/flutter-apk/vysh.<версия>.arm64-v8a.apk и т.д.
 ```
 
 Релизная сборка для Windows одним скриптом:
@@ -141,8 +152,10 @@ powershell -ExecutionPolicy Bypass -File tools\build-windows.ps1
 - [x] Пароли и ключи, проверка ключа сервера
 - [x] SFTP с очередью передач
 - [x] Диагностика подключения
-- [x] Цвета из системы и дотов: акцент Windows, pywal, matugen, caelestia, с обновлением на лету
+- [x] Android: Monet-тема, скачивание в Download через MediaStore
+- [x] Цвета из системы и дотов (Windows / Linux): акцент, pywal, matugen, caelestia
 - [x] Свой заголовок окна с вкладками (Windows / GNOME / KDE)
-- [ ] AppImage, .deb, AUR, установщик для Windows, поддержка отечественных дистрибутивов
+- [ ] F-Droid, Google Play
+- [ ] AppImage, .deb, AUR, установщик для Windows
 - [ ] Сниппеты, проброс портов, jump host, разделение вкладки на панели
 - [ ] ssh-agent / Pageant, хранилище с мастер-паролем

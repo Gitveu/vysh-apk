@@ -72,7 +72,6 @@ class AppSettings {
     this.terminalFontSize = 14,
     this.rememberTerminalFontSize = true,
     this.copyOnSelect = false,
-    this.downloadsDir = '',
     this.pingHosts = true,
     this.rightClick = RightClickAction.menu,
     this.confirmMultilinePaste = true,
@@ -103,9 +102,6 @@ class AppSettings {
 
   /// Показывать строку горячих клавиш терминала (Ctrl, Esc, стрелки) над клавиатурой.
   final bool showAccessoryBar;
-
-  /// Папка для скачанных файлов; пусто — системная «Загрузки».
-  final String downloadsDir;
 
   /// Проверять доступность хостов на главной (TCP к порту SSH раз в 30 с).
   final bool pingHosts;
@@ -156,7 +152,6 @@ class AppSettings {
     double? terminalFontSize,
     bool? rememberTerminalFontSize,
     bool? copyOnSelect,
-    String? downloadsDir,
     bool? pingHosts,
     RightClickAction? rightClick,
     bool? confirmMultilinePaste,
@@ -182,7 +177,6 @@ class AppSettings {
         rememberTerminalFontSize:
             rememberTerminalFontSize ?? this.rememberTerminalFontSize,
         copyOnSelect: copyOnSelect ?? this.copyOnSelect,
-        downloadsDir: downloadsDir ?? this.downloadsDir,
         pingHosts: pingHosts ?? this.pingHosts,
         rightClick: rightClick ?? this.rightClick,
         confirmMultilinePaste:
@@ -209,7 +203,6 @@ class AppSettings {
         'terminalFontSize': terminalFontSize,
         'rememberTerminalFontSize': rememberTerminalFontSize,
         'copyOnSelect': copyOnSelect,
-        'downloadsDir': downloadsDir,
         'pingHosts': pingHosts,
         'rightClick': rightClick.name,
         'confirmMultilinePaste': confirmMultilinePaste,
@@ -243,7 +236,6 @@ class AppSettings {
         rememberTerminalFontSize:
             json['rememberTerminalFontSize'] as bool? ?? true,
         copyOnSelect: json['copyOnSelect'] as bool? ?? false,
-        downloadsDir: json['downloadsDir'] as String? ?? '',
         pingHosts: json['pingHosts'] as bool? ?? true,
         rightClick: RightClickAction.values.firstWhere(
           (a) => a.name == json['rightClick'],

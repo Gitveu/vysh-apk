@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/session_tab.dart';
 import '../../domain/ports/sftp.dart';
-import '../../domain/services/settings_controller.dart';
 import '../../domain/services/sftp_actions.dart';
 import '../../domain/services/tabs_controller.dart';
 import '../../domain/services/transfer_queue.dart';
@@ -64,12 +63,11 @@ class _SftpPaneState extends ConsumerState<SftpPane> {
   SftpActions? get _actions {
     final session = ref.read(tabsProvider.notifier).sessionOf(widget.tab.id);
     if (session == null) return null;
-    final dir = ref.read(settingsProvider).downloadsDir;
     return SftpActions(
       tabId: widget.tab.id,
       session: session,
       queue: ref.read(transferQueueProvider.notifier),
-      downloadsDir: dir.isEmpty ? LocalFiles.defaultDownloadsDir() : dir,
+      downloadsDir: LocalFiles.defaultDownloadsDir(),
     );
   }
 

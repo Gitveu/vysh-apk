@@ -42,8 +42,6 @@ class SettingsController extends Notifier<AppSettings> {
 
   void setCopyOnSelect(bool value) =>
       _update(state.copyWith(copyOnSelect: value));
-  void setDownloadsDir(String dir) =>
-      _update(state.copyWith(downloadsDir: dir));
   void setPingHosts(bool v) => _update(state.copyWith(pingHosts: v));
   void setRightClick(RightClickAction v) =>
       _update(state.copyWith(rightClick: v));

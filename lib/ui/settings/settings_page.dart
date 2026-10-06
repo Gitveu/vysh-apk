@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +9,6 @@ import '../../domain/models/app_settings.dart';
 import '../../domain/models/app_strings.dart';
 import '../../domain/services/settings_controller.dart';
 import '../../infra/platform/desktop_env.dart';
-import '../../infra/platform/local_files.dart';
 import '../theme/app_theme.dart';
 import 'appearance_sections.dart';
 import 'clipboard_section.dart';
@@ -273,45 +271,6 @@ class SettingsPage extends ConsumerWidget {
                     ],
                   ),
                 ],
-                _Section(
-                  icon: Icons.folder_outlined,
-                  title: strings.isRu ? 'Данные' : 'Data',
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(strings.downloadsDirTitle),
-                      subtitle: Text(
-                        s.downloadsDir.isEmpty
-                            ? '${LocalFiles.defaultDownloadsDir()} (${strings.isRu ? 'по умолчанию' : 'default'})'
-                            : s.downloadsDir,
-                        style: monoStyle(
-                          context,
-                          size: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: Wrap(
-                        spacing: 4,
-                        children: [
-                          if (s.downloadsDir.isNotEmpty)
-                            IconButton(
-                              tooltip: strings.resetDefault,
-                              icon: const Icon(Icons.restart_alt),
-                              onPressed: () => ctrl.setDownloadsDir(''),
-                            ),
-                          IconButton(
-                            tooltip: strings.chooseFolder,
-                            icon: const Icon(Icons.folder_open),
-                            onPressed: () async {
-                              final dir = await getDirectoryPath();
-                              if (dir != null) ctrl.setDownloadsDir(dir);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
                 _Section(
                   icon: Icons.info_outline,
                   title: strings.aboutApp,

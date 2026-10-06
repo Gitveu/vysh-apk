@@ -36,6 +36,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Имя APK: vysh.<версия>.<abi>.apk вместо app-<abi>-release.apk.
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abi = output.filters.firstOrNull { it.filterType == "ABI" }?.identifier
+            output.outputFileName = if (abi != null) {
+                "vysh.${defaultConfig.versionName}.${abi}.apk"
+            } else {
+                "vysh.${defaultConfig.versionName}.apk"
+            }
+        }
+    }
 }
 
 kotlin {
