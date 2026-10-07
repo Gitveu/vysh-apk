@@ -28,7 +28,7 @@ class LocalFiles {
 
   // ─── Общая папка Download на Android ────────────────────────────
 
-  static const _filesChannel = MethodChannel('com.vysh.vysh/local_files');
+  static const _filesChannel = MethodChannel('uwu.vyto4ka.vysh/local_files');
 
   /// Публичная Download доступна без разрешений: файл качается во временную
   /// папку и публикуется через MediaStore.Downloads (Android 10+).

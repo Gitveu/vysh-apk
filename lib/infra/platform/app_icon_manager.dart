@@ -15,7 +15,7 @@ class MonetColors {
 }
 
 abstract final class AppIconManager {
-  static const _channel = MethodChannel('com.vysh.vysh/app_icon');
+  static const _channel = MethodChannel('uwu.vyto4ka.vysh/app_icon');
 
   static Future<MonetColors?> getMonetColors() async {
     if (kIsWeb) return null;

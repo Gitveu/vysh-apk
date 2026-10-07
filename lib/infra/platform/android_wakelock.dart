@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 abstract final class AndroidWakeLock {
-  static const _channel = MethodChannel('com.vysh.vysh/wakelock');
+  static const _channel = MethodChannel('uwu.vyto4ka.vysh/wakelock');
 
   static Future<void> acquire({String? title}) async {
     if (kIsWeb) return;
