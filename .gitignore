@@ -46,6 +46,8 @@ desktop.ini
 id_rsa*
 id_ed25519*
 .env
+key.properties
+*.jks
 
 # Служебная папка, не для репозитория
 Claude outputs/
